@@ -60,7 +60,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 
    ```env
    API_KEY=your_api_key_here
-   API_URL=https://api.openai.com/v1/chat/completions
+   API_URL=https://api.openai.com/v1
    MODEL=gpt-4
    ```
 
@@ -139,6 +139,8 @@ XQ9-Agent/
 ├── system_prompt_zh_tw.txt   # Traditional Chinese system prompt
 ├── tools/
 │   ├── __init__.py           # Tool registry
+│   ├── config.py             # Configs
+│   ├── handler.py            # Tool handling
 │   ├── web_search.py         # Search engine implementation
 │   ├── open_url.py           # Web page fetcher with cleaning
 │   ├── run_python.py         # Local Python execution
