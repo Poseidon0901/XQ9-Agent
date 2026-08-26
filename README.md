@@ -1,5 +1,8 @@
 # XQ9-Agent
 
+[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 An AI-powered agent interface built with Python that leverages tool calling to perform web searches, read web pages, execute local Python code, and manage persistent memory across conversations.
 
 ## ✨ Features
@@ -22,12 +25,14 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/Poseidon0901/XQ9-Agent.git
    cd XQ9-Agent
    ```
 
 2. **Create and activate a virtual environment**
+
    ```bash
    # On Windows
    python -m venv venv
@@ -39,16 +44,18 @@ An AI-powered agent interface built with Python that leverages tool calling to p
    ```
 
 3. **Install dependencies**
+
    ```bash
    pip install -r requirements.txt
    ```
 
 4. **Set up environment variables**
-   
+
    Create a `.env` file in the project root with the following:
+
    ```env
    API_KEY=your_api_key_here
-   API_URL=https://api.openai.com/v1
+   API_URL=https://api.openai.com/v1/chat/completions
    MODEL=gpt-4
    ```
 
@@ -59,8 +66,9 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 ### Basic Commands
 
 Start the agent:
+
 ```bash
-python agent_requests.py
+python agent.py
 ```
 
 ### Interactive CLI Commands
@@ -118,22 +126,22 @@ The agent has 5 tools available. Each has usage limits to prevent infinite loops
 
 ```
 XQ9-Agent/
-├── agent_requests.py      # Main application entry point
-├── requirements.txt       # Python dependencies
-├── .env.example           # Example environment variables
-├── system_prompt_en_us.txt # English system prompt
-├── system_prompt_zh_tw.txt # Traditional Chinese system prompt
+├── agent.py                  # Main application entry point
+├── requirements.txt          # Python dependencies
+├── .env.example              # Example environment variables
+├── system_prompt_en_us.txt   # English system prompt
+├── system_prompt_zh_tw.txt   # Traditional Chinese system prompt
 ├── tools/
-│   ├── __init__.py        # Tool registry
-│   ├── web_search.py      # Search engine implementation
-│   ├── open_url.py        # Web page fetcher with cleaning
-│   ├── run_python.py      # Local Python execution
-│   ├── manage_memories.py # Persistent memory system
-│   ├── get_domain.py      # Domain extraction helper
-│   └── normalize_url.py   # URL normalization helper
-├── logs/                  # Log files (auto-created)
-└── memories/              # Memory storage (auto-created)
-    └── memories.json      # Persistent memory database
+│   ├── __init__.py           # Tool registry
+│   ├── web_search.py         # Search engine implementation
+│   ├── open_url.py           # Web page fetcher with cleaning
+│   ├── run_python.py         # Local Python execution
+│   ├── manage_memories.py    # Persistent memory system
+│   ├── get_domain.py         # Domain extraction helper
+│   └── normalize_url.py      # URL normalization helper
+├── logs/                     # Log files (auto-created)
+└── memories/                 # Memory storage (auto-created)
+    └── memories.json         # Persistent memory database
 ```
 
 ## 🧠 Memory System
@@ -170,7 +178,7 @@ All configuration is managed through environment variables in `.env`:
 
 ### Customization Constants
 
-You can modify these in `agent_requests.py`:
+You can modify these in `agent.py`:
 
 ```python
 MAX_TOTAL_TOOL_CALLS = 30   # Max tool calls per conversation
@@ -183,6 +191,7 @@ MAX_SEARCH_RESULTS_KEPT = 5 # Results to keep in context
 ## 📝 Logging
 
 All activities are logged to the `logs/` directory:
+
 - `web_search_YYYY-MM-DD.HH.MM.SS.log` – All search queries and results
 - `open_url_YYYY-MM-DD.HH.MM.SS.log` – All URL fetches with content
 
@@ -194,12 +203,12 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 📄 License
 
-This project is open source and available under the [MIT License](LICENSE).
+This project is open source and available under the MIT License.
 
 ## 🙏 Acknowledgments
 
 - [Rich](https://github.com/Textualize/rich) for beautiful terminal output
-- [DuckDuckGo Search](https://github.com/deedy5/duckduckgo-search) for web search capabilities
+- [DuckDuckGo Search](https://duckduckgo.com/) for web search capabilities
 - [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing
 
 ## ❓ FAQ
