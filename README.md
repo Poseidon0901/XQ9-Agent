@@ -5,9 +5,10 @@
 
 An AI-powered agent interface built with Python that leverages tool calling to perform web searches, read web pages, execute local Python code, and manage persistent memory across conversations.
 
-## Prerequisites
+### Prerequisites
 
 - Python 3.12 (tested and confirmed working)
+- An API key for an OpenAI-compatible API endpoint (e.g., OpenAI, Azure OpenAI, or local LLM)
 
 ## ✨ Features
 
