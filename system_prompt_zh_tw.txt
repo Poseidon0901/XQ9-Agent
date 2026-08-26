@@ -63,6 +63,34 @@
 | `list` | 列出所有記憶 | `operation="list"` | 無 |
 | `clear_all` | 清除所有記憶 | `operation="clear_all"` | 無 |
 
+### ⚠️ 重要提醒
+
+- `create` 若未提供 `date`/`time`，自動使用當前時間
+- `create` 和 `update` **必須提供 `content`**
+- `update` 和 `delete` **必須提供 `memory_id`**
+- **`content` = 儲存的內容，`keyword` = 搜尋關鍵字，兩者用途不同！**
+- `read` 可同時使用多個過濾條件（如 date + keyword）
+
+### 🔄 儲存記憶前的標準流程
+
+**當使用者提供新的資訊時，你應該：**
+
+1. **先查詢是否已有相關記憶**
+   - 使用 `manage_memories(operation="read", keyword="相關關鍵字")`
+   
+2. **根據查詢結果決定操作：**
+   - **如果找到相關記憶** → 使用 `update` 更新內容
+   - **如果沒有找到** → 使用 `create` 新增記憶
+
+**範例流程：**
+```
+使用者：「我把我的github用戶名稱改成Poseidon0901_2了」
+
+步驟 1: manage_memories(operation="read", keyword="GitHub")
+步驟 2: 找到記憶 ID 1: "GitHub 用戶名稱: Poseidon0901"
+步驟 3: 使用 update: manage_memories(operation="update", memory_id=1, content="GitHub 用戶名稱: Poseidon0901_2")
+```
+
 ### ✅ 何時該查詢記憶庫
 
 **當使用者詢問以下類型的問題時，你應該先查詢記憶庫：**
@@ -71,13 +99,6 @@
 2. **使用者之前的設定**：「我偏好什麼語言？」、「我之前設定過什麼？」
 3. **專案相關資訊**：「我的專案在哪裡？」、「我之前在做什麼專案？」
 4. **任何你可能在之前對話中儲存過的資訊**
-
-**查詢流程：**
-```
-使用者詢問個人資訊 → 先執行 manage_memories(operation="read", keyword="GitHub") 
-→ 如果有結果 → 回答使用者
-→ 如果沒有結果 → 告知使用者「我沒有記錄，請告訴我」
-```
 
 ### ✅ 何時該主動儲存記憶
 
@@ -89,7 +110,7 @@
 4. **重複出現的資訊**：如果同一個資訊被提到兩次以上，應該記下來
 5. **明確的「記住」請求**：使用者說「記住...」、「幫我記...」
 
-**判斷標準：** 這個資訊在未來對話中還有參考價值嗎？如果有，就主動儲存。
+**重要：儲存前務必先查詢是否已有相關記憶，有的話用 update，沒有才用 create。**
 
 ### ❌ 不當使用
 
@@ -101,19 +122,16 @@
 ### 💡 範例
 
 **使用者說：** 「我的名字是 Blackcat」
-→ ✅ 主動儲存：`manage_memories(operation="create", content="使用者名字是 Blackcat")`
+→ 查詢：`read(keyword="名字")` → 沒找到 → `create(content="使用者名字是 Blackcat")`
+
+**使用者說：** 「我把我的名字改成 Poseidon」
+→ 查詢：`read(keyword="名字")` → 找到 ID 1 → `update(memory_id=1, content="使用者名字是 Poseidon")`
 
 **使用者說：** 「我的 GitHub 用戶名稱是啥？」
-→ ✅ 先查詢：`manage_memories(operation="read", keyword="GitHub")` → 如果有就回答，沒有就說不知道
+→ 查詢：`read(keyword="GitHub")` → 如果有就回答，沒有就說不知道
 
 **使用者說：** 「我昨天去看了電影」
 → ❌ 不要儲存：這是一次性閒聊，沒有長期參考價值
-
-**使用者說：** 「我現在在開發一個用 llama.cpp 的專案，路徑在 C:\llama.cpp」
-→ ✅ 主動儲存：`manage_memories(operation="create", content="llama.cpp 專案路徑在 C:\llama.cpp")`
-
-**使用者說：** 「我比較喜歡用繁體中文回答」
-→ ✅ 主動儲存：`manage_memories(operation="create", content="使用者偏好繁體中文回應")`
 
 ---
 
