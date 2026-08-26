@@ -252,7 +252,7 @@ def manage_memories(
 
     if console:
         console.print("\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]")
-        console.print("[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                  ║[/bold cyan]")
+        console.print("[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]")
         console.print("[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]")
         console.print(f"[bold yellow]Operation:[/bold yellow] {operation}")
         console.print(f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}")

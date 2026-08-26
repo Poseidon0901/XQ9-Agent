@@ -63,6 +63,26 @@ You have the `manage_memories` tool to store and retrieve important information 
 | `list` | List all memories | `operation="list"` | none |
 | `clear_all` | Clear ALL memories | `operation="clear_all"` | none |
 
+### 🔄 Standard Flow Before Storing Memories
+
+**When the user provides new information, you should:**
+
+1. **First check if related memory already exists**
+   - Use `manage_memories(operation="read", keyword="relevant keyword")`
+   
+2. **Decide operation based on result:**
+   - **If related memory found** → Use `update` to update the content
+   - **If no related memory found** → Use `create` to add new memory
+
+**Example flow:**
+```
+User: "I changed my GitHub username to Poseidon0901_2"
+
+Step 1: manage_memories(operation="read", keyword="GitHub")
+Step 2: Found memory ID 1: "GitHub username: Poseidon0901"
+Step 3: Use update: manage_memories(operation="update", memory_id=1, content="GitHub username: Poseidon0901_2")
+```
+
 ### ✅ When to Query the Memory
 
 **You should FIRST query the memory when the user asks about:**
@@ -71,13 +91,6 @@ You have the `manage_memories` tool to store and retrieve important information 
 2. **Previous user settings**: "What language do I prefer?", "What did I set up before?"
 3. **Project information**: "Where is my project?", "What project was I working on?"
 4. **Any information you may have stored in previous conversations**
-
-**Query flow:**
-```
-User asks about personal info → First run manage_memories(operation="read", keyword="GitHub")
-→ If result found → Answer the user
-→ If no result → Tell user "I don't have that recorded, please tell me"
-```
 
 ### ✅ When to Proactively Store Memories
 
@@ -89,7 +102,7 @@ User asks about personal info → First run manage_memories(operation="read", ke
 4. **Recurring information**: if the same information is mentioned more than once, store it
 5. **Explicit "remember" requests**: user says "remember...", "save this..."
 
-**Rule of thumb:** Will this information be useful in future conversations? If yes, proactively store it.
+**Important: Always query first to check if related memory exists. Use update if found, create if not.**
 
 ### ❌ When NOT to Use
 
@@ -101,19 +114,16 @@ User asks about personal info → First run manage_memories(operation="read", ke
 ### 💡 Examples
 
 **User says:** "My name is Blackcat"
-→ ✅ Proactively store: `manage_memories(operation="create", content="User name is Blackcat")`
+→ Query: `read(keyword="name")` → Not found → `create(content="User name is Blackcat")`
+
+**User says:** "I changed my name to Poseidon"
+→ Query: `read(keyword="name")` → Found ID 1 → `update(memory_id=1, content="User name is Poseidon")`
 
 **User says:** "What's my GitHub username?"
-→ ✅ First query: `manage_memories(operation="read", keyword="GitHub")` → If found, answer; if not, say you don't know
+→ Query: `read(keyword="GitHub")` → If found, answer; if not, say you don't know
 
 **User says:** "I went to see a movie yesterday"
 → ❌ Do not store: This is one-off chat, no long-term value
-
-**User says:** "I'm working on a llama.cpp project at C:\llama.cpp"
-→ ✅ Proactively store: `manage_memories(operation="create", content="llama.cpp project path at C:\llama.cpp")`
-
-**User says:** "I prefer responses in Traditional Chinese"
-→ ✅ Proactively store: `manage_memories(operation="create", content="User prefers Traditional Chinese responses")`
 
 ---
 
