@@ -306,6 +306,10 @@ class App():
                         "role": "system",
                         "content": self.system_message_zh_tw if has_chinese else self.system_message_en_us
                     })
+                    if has_chinese:
+                        self.console.print("[yellow]Using zh_tw system prompt[/yellow]")
+                    else:
+                        self.console.print("[yellow]Using en_us system prompt[/yellow]")
                 
                 self.messages.append({
                     "role": "user",
