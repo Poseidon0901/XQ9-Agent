@@ -24,7 +24,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.12 or higher
 - An API key for an OpenAI-compatible API endpoint (e.g., OpenAI, Azure OpenAI, or local LLM)
 
 ### Installation
@@ -115,7 +115,7 @@ You > Calculate the average of [1, 2, 3, 4, 5]
 
 ## 🔧 Tool Reference
 
-The agent has 5 tools available. Each has usage limits to prevent infinite loops:
+The agent has 4 tools available. Each has usage limits to prevent infinite loops:
 
 | Tool | Purpose | Max Calls |
 |------|---------|-----------|
