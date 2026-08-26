@@ -47,11 +47,12 @@ TOOLS = [
                 "type": "object",
                 "properties": {
                     "code": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Python code to execute."
                     },
                     "timeout": {
                         "type": "integer",
-                        "description": "Maximum execution time in seconds. (Default 10 seconds)"
+                        "description": "Maximum execution time in seconds. (Default 10 seconds, max 300)"
                     }
                 },
                 "required": ["code"]
@@ -62,34 +63,44 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "manage_memories",
-            "description": "Manage external memories that persist across all conversations. Use this to store, retrieve, update, delete, or list important information. Operations: create (add new memory with content, optional date/time), read (retrieve memories by ID, date, or keyword search), update (modify existing memory by ID), delete (remove memory by ID), list (show all memories summary), clear_all (delete ALL memories - use with caution!).",
+            "description": """Manage external memories that persist across all conversations.
+
+Operations:
+- create: Store new memory. Requires content. Optional date (YYYY-MM-DD) and time (HH:MM).
+- read: Retrieve memories. Can filter by memory_id, date, or keyword search.
+- update: Modify existing memory. Requires memory_id and new content.
+- delete: Remove a memory. Requires memory_id.
+- list: Show all memories summary (most recent first).
+- clear_all: Delete ALL memories - use with extreme caution!
+
+Always query first before creating/updating to avoid duplicates.""",
             "parameters": {
                 "type": "object",
                 "properties": {
                     "operation": {
                         "type": "string",
-                        "description": "Operation to perform: 'create', 'read', 'update', 'delete', 'list', or 'clear_all'",
+                        "description": "Operation to perform",
                         "enum": ["create", "read", "update", "delete", "list", "clear_all"]
                     },
                     "memory_id": {
                         "type": "integer",
-                        "description": "Memory ID (required for update and delete; optional for read to get specific memory)"
+                        "description": "Memory ID (required for update, delete; optional for read)"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "Memory content. REQUIRED for create and update. Put the full text here."
                     },
                     "date": {
                         "type": "string",
-                        "description": "Date filter in YYYY-MM-DD format (optional for read, or for create to set date)"
+                        "description": "Date in YYYY-MM-DD format (optional for create/read)"
                     },
                     "time": {
                         "type": "string",
                         "description": "Time in HH:MM format (optional for create)"
                     },
-                    "content": {
-                        "type": "string",
-                        "description": "IMPORTANT: For operation='create' or operation='update', put the COMPLETE MEMORY TEXT HERE. When updating a memory, the NEW TEXT MUST be placed in this field. NEVER put new memory content in 'keyword'."
-                    },
                     "keyword": {
                         "type": "string",
-                        "description": "IMPORTANT: ONLY use this field when operation='read' to SEARCH existing memories. NEVER use this field for create or update."
+                        "description": "Search keyword for read operation. Searches within memory content."
                     }
                 },
                 "required": ["operation"]
