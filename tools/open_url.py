@@ -2,7 +2,7 @@ from rich.console import Console
 import urllib
 from .get_domain import get_domain
 import re
-import requests
+from curl_cffi import requests
 from bs4 import BeautifulSoup
 from datetime import datetime
 import json
@@ -430,7 +430,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         console.print(f"[dim]Fixed: {url}[/dim]")
     
     try:
-        session = requests.Session()
+        session = requests.Session(impersonate="chrome120")
         session.max_redirects = MAX_REDIRECTS
 
         response = session.get(
@@ -438,7 +438,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             headers={
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                             "AppleWebKit/537.36 (KHTML, like Gecko) "
-                            "Chrome/91.0.4472.124 Safari/537.36"
+                            "Chrome/151.0.0.0 Safari/537.36"
             },
             timeout=15,
             allow_redirects=True
