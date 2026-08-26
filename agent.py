@@ -71,8 +71,8 @@ class App():
             "deletelogs": self.cmd_clearlogs,
             "logs": self.cmd_logs,
             "showlogs": self.cmd_logs,
-            "switchsystemprompt": self.cmd_switchsystemprompt,
-            "switchtools": self.cmd_switchtools
+            "togglesystemprompt": self.cmd_togglesystemprompt,
+            "toggletools": self.cmd_toggletools
         }
 
         self.tool_handler = ToolHandler(self)
@@ -160,7 +160,7 @@ class App():
                 self.console.print(f"  {os.path.basename(f)} ({size} KB)")
         return CommandResult.CONTINUE
 
-    def cmd_switchsystemprompt(self):
+    def cmd_togglesystemprompt(self):
         self.use_system_prompt = not self.use_system_prompt
 
         if self.use_system_prompt:
@@ -178,7 +178,7 @@ class App():
         self.console.print(f"[yellow]System prompt {status}.[/yellow]")
         return CommandResult.CONTINUE
 
-    def cmd_switchtools(self):
+    def cmd_toggletools(self):
         self.use_tools = not self.use_tools
         status = "enabled" if self.use_tools else "disabled"
         self.console.print(f"[yellow]Tools {status}.[/yellow]")
