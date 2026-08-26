@@ -84,6 +84,8 @@ python agent.py
 | `/clear` or `/erase` | Clear the current conversation history |
 | `/logs` or `/showlogs` | Show recent log files |
 | `/clearlogs` or `/deletelogs` | Delete all log files (requires confirmation) |
+| `/togglesystemprompt` | Toggle whether to use system prompt |
+| `/toggletools` | Toggle whether to use tools |
 
 ### Example Interactions
 
