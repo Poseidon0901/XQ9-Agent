@@ -124,6 +124,7 @@ SUSPICIOUS_DOMAINS = {
 }
 
 SUSPICIOUS_THRESHOLD = 25
+TRUSTED_SUSPICIOUS_THRESHOLD = 50
 
 SAFE_THRESHOLD = 8
 
@@ -190,7 +191,8 @@ def calculate_suspicious_score(
     snippet: str,
     url: str,
     domain: str = None,
-    original_url: str = None
+    original_url: str = None,
+    domain_trusted: bool = False
 ) -> tuple:
 
     if domain is None:
@@ -206,7 +208,7 @@ def calculate_suspicious_score(
     url_lower = url.lower()
     original_domain = get_domain(original_url).lower()
 
-    if is_trusted_domain(domain):
+    if domain_trusted:
         total_score -= 10
         details.append(
             f"Trusted domain '{domain}': -10"
@@ -514,37 +516,11 @@ def open_url(url: str, console: Console, launch_timestamp: str):
 
         final_url = response.url
         final_domain = get_domain(final_url)
+        final_domain_trusted = is_trusted_domain(final_domain)
 
-        if is_trusted_domain(final_domain):
+        if final_domain_trusted:
             console.print(f"[green]Domain is trusted:[/green] {final_domain}")
-            content_type = response.headers.get('content-type', '').lower()
-            
-            if 'text/html' in content_type:
-                text = extract_text_from_html(response.text, final_url)
-            elif 'application/json' in content_type:
-                try:
-                    data = response.json()
-                    text = json.dumps(data, ensure_ascii=False, indent=2)
-                except Exception:
-                    text = response.text[:2000]
-            else:
-                text = response.text[:4000]
 
-            if len(text) > 5000:
-                text = text[:5000] + "\n\n... [Content truncated]"
-            
-            result = {
-                "url": original_url,
-                "final_url": final_url,
-                "content": text,
-                "status": "success",
-                "suspicious_score": 0,
-                "trusted": True
-            }
-            
-            log_open_url(original_url, result, launch_timestamp=launch_timestamp)
-            return result
-        
         soup = BeautifulSoup(response.text, "html.parser")
         title = soup.title.string if soup.title else ""
         body_text = soup.get_text()
@@ -554,15 +530,18 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             snippet=body_text[:5000],
             url=final_url,
             domain=final_domain,
-            original_url=original_url
+            original_url=original_url,
+            domain_trusted=final_domain_trusted
         )
         
         console.print(f"[dim]Suspicious score: {suspicious_score}[/dim]")
         for detail in score_details:
             console.print(f"[dim]  {detail}[/dim]")
+
+        suspicious_threshold = TRUSTED_SUSPICIOUS_THRESHOLD if final_domain_trusted else SUSPICIOUS_THRESHOLD
         
-        if suspicious_score >= SUSPICIOUS_THRESHOLD:
-            console.print(f"[red]Domain parking detected:[/red] Score {suspicious_score} >= {SUSPICIOUS_THRESHOLD}")
+        if suspicious_score >= suspicious_threshold :
+            console.print(f"[red]Domain parking detected:[/red] Score {suspicious_score} >= {suspicious_threshold}")
             result = {
                 "url": original_url,
                 "final_url": final_url,
@@ -575,7 +554,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             log_open_url(original_url, result, launch_timestamp=launch_timestamp)
             return result
         
-        if suspicious_score >= SAFE_THRESHOLD:
+        if suspicious_score >= SAFE_THRESHOLD and not final_domain_trusted:
             console.print(f"[yellow]Page has some suspicious indicators:[/yellow] Score {suspicious_score}")
         else:
             console.print(f"[green]Page appears safe:[/green] Score {suspicious_score}")
