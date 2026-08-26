@@ -4,16 +4,27 @@ from rich.markdown import Markdown
 import json
 from datetime import datetime
 import os
-from tools import TOOLS, web_search, open_url, run_python, manage_memories
+from tools import TOOLS
 from tools.manage_memories import get_memory_manager
+from tools.handler import ToolHandler
 import glob
 from enum import Enum, auto
-import io
 import sys
 import re
 from dotenv import load_dotenv
 
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+from tools.config import MAX_TOTAL_TOOL_CALLS
+
+if sys.platform == "win32":
+    try:
+        import subprocess
+        subprocess.run("chcp 65001 > nul", shell=True, capture_output=True)
+    except Exception:
+        pass
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except AttributeError:
+        pass
 
 load_dotenv()
 
@@ -25,18 +36,12 @@ print("API_URL =", repr(API_URL))
 print("MODEL =", repr(MODEL))
 print("API_KEY =", repr(API_KEY[:10] + "...") if API_KEY else None)
 
-MAX_TOTAL_TOOL_CALLS = 30
-MAX_SEARCH_CALLS = 5
-MAX_OPEN_URL_CALLS = 10
-
-MAX_SNIPPET_LENGTH = 150
-MAX_SEARCH_RESULTS_KEPT = 5
-MAX_FORMATTED_RESULTS_LENGTH = 2000
 
 class CommandResult(Enum):
     BREAK = auto()
     CONTINUE = auto()
     PROCESS = auto()
+
 
 class App():
     def __init__(self):
@@ -50,7 +55,7 @@ class App():
 
         self.last_search_results = []
         self.last_search_query = ""
-        
+
         self.commands = {
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
@@ -61,22 +66,20 @@ class App():
             "logs": self.cmd_logs,
             "showlogs": self.cmd_logs,
         }
-        
+
+        self.tool_handler = ToolHandler(self)
+
         self.system_message_zh_tw = ""
         self.system_message_en_us = ""
         with open("system_prompt_zh_tw.txt", "r", encoding="utf-8") as f:
             self.system_message_zh_tw = f.read()
         with open("system_prompt_en_us.txt", "r", encoding="utf-8") as f:
-                    self.system_message_en_us = f.read()
+            self.system_message_en_us = f.read()
 
         self.messages = []
 
         self.init_log_files()
         self.memory_manager = get_memory_manager()
-        self._init_commands()
-
-    def _init_commands(self):
-        pass
 
     def init_log_files(self):
         self.log_dir = "logs"
@@ -104,6 +107,7 @@ class App():
         self.messages = []
         self.last_search_results = []
         self.last_search_query = ""
+        self.tool_handler.reset_counters()
         self.console.print("[yellow]Conversation history cleared.[/yellow]")
         return CommandResult.CONTINUE
 
@@ -161,122 +165,10 @@ class App():
             return match.group(0)
         return None
 
-    def _add_url_to_search_results(self, url: str, query: str = None):
-        if query is None:
-            query = f"URL: {url}"
-
-        for result in self.last_search_results:
-            if result.get("url") == url:
-                return
-
-        self.last_search_results.append({
-            "title": f"URL: {url}",
-            "snippet": f"User provided URL: {url}",
-            "url": url
-        })
-        
-        self.last_search_query = query
-        self.console.print(f"[green]✓ Added URL to search results:[/green] {url}")
-        self.console.print(f"[dim]Use index {len(self.last_search_results)} to open it.[/dim]")
-
-    def _format_search_results(self, results: list, query: str) -> str:
-        if not results:
-            return f"No result for: '{query}'"
-
-        results_to_show = results[:MAX_SEARCH_RESULTS_KEPT]
-
-        formatted = f"## Search results: {query}\n\n"
-
-        for i, result in enumerate(results_to_show, 1):
-            title = result.get('title', 'untitled')[:80]
-            snippet = result.get('snippet', 'no snippet')[:MAX_SNIPPET_LENGTH]
-            if len(result.get('snippet', '')) > MAX_SNIPPET_LENGTH:
-                snippet += "..."
-
-            formatted += f"**[{i}] {title}**\n"
-            formatted += f"{snippet}\n"
-            formatted += f"Index: {i}\n\n"
-
-        if len(results) > MAX_SEARCH_RESULTS_KEPT:
-            formatted += f"\n*({len(results) - MAX_SEARCH_RESULTS_KEPT} more results are available via index lookup.)*\n"
-
-        formatted += f"\n**Use open_url_by_index(index) to retrieve full content.**\n"
-        formatted += f"**Valid index range: 1-{len(results)}**"
-
-        if len(formatted) > MAX_FORMATTED_RESULTS_LENGTH:
-            formatted = formatted[:MAX_FORMATTED_RESULTS_LENGTH] + "\n... (content truncated)"
-        
-        return formatted
-
-    def _execute_web_search(self, query: str):
-        self.console.print(f"[yellow]Searching:[/yellow] {query}")
-        
-        search_result = web_search(query, console=self.console, launch_timestamp=self.launch_timestamp)
-        
-        if search_result.get("error"):
-            self.console.print(f"[red]Search error:[/red] {search_result['error']}")
-            return {
-                "error": search_result['error'],
-                "results": []
-            }
-        
-        results = search_result.get("results", [])
-
-        compressed_results = []
-        for r in results[:MAX_SEARCH_RESULTS_KEPT]:
-            compressed_results.append({
-                "title": r.get("title", "")[:100],
-                "snippet": r.get("snippet", "")[:MAX_SNIPPET_LENGTH],
-                "url": r.get("url", "")
-            })
-        
-        self.last_search_results = compressed_results
-        self.last_search_query = query
-        
-        if results:
-            self.console.print(f"[green]Found {len(results)} search results[/green]")
-            for i, r in enumerate(results[:3], 1):
-
-                short_title = r['title'][:60] + ("..." if len(r['title']) > 60 else "")
-                self.console.print(f"[dim]  {i}. {short_title} - {r['url']}[/dim]")
-
-        search_result["results"] = compressed_results
-        return search_result
-
-    def _execute_open_url_by_index(self, index: int) -> dict:
-        if not self.last_search_results:
-            return {
-                "error": "No available result. Please run web_search first.",
-                "content": ""
-            }
-        
-        if index < 1 or index > len(self.last_search_results):
-            return {
-                "error": f"Index {index} out of range. Valid range: 1-{len(self.last_search_results)}",
-                "content": "",
-                "available_indices": list(range(1, len(self.last_search_results) + 1))
-            }
-
-        selected_result = self.last_search_results[index - 1]
-        url = selected_result.get("url")
-        title = selected_result.get("title", "untitled")
-        
-        self.console.print(f"[yellow]Opening result #{index}:[/yellow] {title}")
-        self.console.print(f"[dim]URL: {url}[/dim]")
-
-        result = open_url(url, console=self.console, launch_timestamp=self.launch_timestamp)
-
-        result["selected_index"] = index
-        result["selected_title"] = title
-        
-        return result
-
     def _cleanup_old_messages(self):
         if len(self.messages) > 20:
             new_messages = [self.messages[0]]
-
             new_messages.extend(self.messages[-10:])
-            
             self.messages = new_messages
             self.console.print("[dim]Part of the conversation history was cleaned up to save memory.[/dim]")
 
@@ -297,7 +189,7 @@ class App():
 
                 extracted_url = self._extract_url_from_input(user_input)
                 if extracted_url:
-                    self._add_url_to_search_results(extracted_url)
+                    self.tool_handler.add_url_to_search_results(extracted_url)
                     self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
                 if len(self.messages) == 0:
@@ -319,11 +211,7 @@ class App():
                 if len(self.messages) > 30:
                     self._cleanup_old_messages()
 
-                searched_queries = set()
-                visited_urls = set()
                 total_tool_calls = 0
-                search_calls = 0
-                open_url_calls = 0
 
                 while True:
                     response = self.client.chat.completions.create(
@@ -340,7 +228,6 @@ class App():
                     message = response.choices[0].message
 
                     reasoning = getattr(message, 'reasoning_content', None) or getattr(message, 'reasoning', None)
-
                     if reasoning:
                         self.console.print("\n[dim]Thinking:[/dim]")
                         self.console.print(Markdown(f"> {reasoning}"))
@@ -348,16 +235,13 @@ class App():
 
                     if not message.tool_calls:
                         answer = message.content or ""
-
                         self.messages.append({
                             "role": "assistant",
                             "content": answer
                         })
-
                         self.console.print("\n[bold green]AI >[/bold green]")
                         self.console.print(Markdown(answer))
                         self.console.print("\n")
-
                         break
 
                     self.messages.append({
@@ -382,12 +266,13 @@ class App():
 
                         if total_tool_calls >= MAX_TOTAL_TOOL_CALLS:
                             self.console.print("[red]Maximum tool calls reached.[/red]")
+                            result = {
+                                "error": "Maximum tool call limit reached. Please answer using the information already available."
+                            }
                             self.messages.append({
                                 "role": "tool",
                                 "tool_call_id": tool_id,
-                                "content": json.dumps({
-                                    "error": "Maximum tool call limit reached. Please answer using the information already available."
-                                }, ensure_ascii=False)
+                                "content": json.dumps(result, ensure_ascii=False)
                             })
                             continue
                         
@@ -395,89 +280,17 @@ class App():
 
                         try:
                             arguments = json.loads(tool_call.function.arguments)
-
-                            if function_name == "web_search":
-                                query = arguments.get("query", "").strip()
-                                
-                                if query.lower() in searched_queries:
-                                    result = {
-                                        "error": "You have already executed this search query. "
-                                                "Do not repeat searches. Please answer the user using existing search results."
-                                    }
-                                else:
-                                    searched_queries.add(query.lower())
-                                    
-                                    if search_calls >= MAX_SEARCH_CALLS:
-                                        result = {"error": "Search limit reached."}
-                                    else:
-                                        search_calls += 1
-                                        search_result = self._execute_web_search(query)
-                                        
-                                        if search_result.get("error"):
-                                            result = search_result
-                                        else:
-                                            formatted_results = self._format_search_results(
-                                                search_result.get("results", []),
-                                                query
-                                            )
-                                            result = {
-                                                "query": query,
-                                                "results": search_result.get("results", []),
-                                                "formatted": formatted_results,
-                                                "total": len(search_result.get("results", []))
-                                            }
-                                            result["results"] = search_result.get("results", [])[:MAX_SEARCH_RESULTS_KEPT]
-
-                            elif function_name == "open_url_by_index":
-                                index = arguments.get("index", 0)
-                                try:
-                                    index = int(index)
-                                except (ValueError, TypeError):
-                                    result = {
-                                        "error": f"Invalid index: {index}. Please submit an integer."
-                                    }
-                                else:
-                                    if open_url_calls >= MAX_OPEN_URL_CALLS:
-                                        result = {"error": "open_url_by_index limit reached."}
-                                    else:
-                                        open_url_calls += 1
-                                        result = self._execute_open_url_by_index(index)
-
-                            elif function_name == "run_python":
-                                code = arguments.get("code", "")
-
-                                if not code.strip():
-                                    result = {
-                                        "error": "No Python code provided."
-                                    }
-                                else:
-                                    result = run_python(code, console=self.console)
-
-                            elif function_name == "manage_memories":
-                                operation = arguments.get("operation", "")
-                                content = arguments.get("content", None)
-                                memory_id = arguments.get("memory_id", None)
-                                date = arguments.get("date", None)
-                                time = arguments.get("time", None)
-                                keyword = arguments.get("keyword", None)
-                                
-                                result = manage_memories(
-                                    operation=operation,
-                                    content=content,
-                                    memory_id=memory_id,
-                                    date=date,
-                                    time=time,
-                                    keyword=keyword,
-                                    console=self.console
-                                )
-
-                            else:
-                                result = {
-                                    "error": f"Unknown function: {function_name}"
-                                }
-
+                            result = self.tool_handler.execute(function_name, arguments)
+                        except json.JSONDecodeError as e:
+                            result = {
+                                "error": f"Failed to parse tool arguments: {str(e)}",
+                                "type": "JSONDecodeError"
+                            }
                         except Exception as e:
-                            result = {"error": str(e), "type": type(e).__name__}
+                            result = {
+                                "error": str(e),
+                                "type": type(e).__name__
+                            }
 
                         self.messages.append({
                             "role": "tool",
@@ -490,6 +303,7 @@ class App():
                 break
             except Exception as e:
                 self.console.print(f"[red]Error:[/red] {str(e)}")
+
 
 if __name__ == "__main__":
     app = App()
