@@ -115,7 +115,6 @@ The agent has 5 tools available. Each has usage limits to prevent infinite loops
 | Tool | Purpose | Max Calls |
 |------|---------|-----------|
 | `web_search(query)` | Search the internet for information | 5 |
-| `open_url(url)` | Read the full content of a specific URL | 10 |
 | `open_url_by_index(index)` | Read a search result by its index | 10 |
 | `run_python(code)` | Execute Python code locally | 30 (total) |
 | `manage_memories(operation, ...)` | Manage persistent memory (create, read, update, delete, list, clear_all) | 30 (total) |
