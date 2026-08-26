@@ -11,8 +11,15 @@ from enum import Enum, auto
 import io
 import sys
 import re
+from dotenv import load_dotenv
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+load_dotenv()
+
+API_URL = os.getenv("API_URL")
+API_KEY = os.getenv("API_KEY")
+MODEL = os.getenv("MODEL")
 
 MAX_TOTAL_TOOL_CALLS = 30
 MAX_SEARCH_CALLS = 5
@@ -32,8 +39,8 @@ class App():
         self.console = Console()
 
         self.client = OpenAI(
-            base_url="http://127.0.0.1:8080/v1",
-            api_key="xq-blackcat1010901-key"
+            base_url=API_URL,
+            api_key=API_KEY
         )
         self.launch_timestamp = datetime.now().strftime('%Y-%m-%d.%H.%M.%S')
         self.model = r"C:\Users\Blackcat\llama.cpp\models\gpt-oss-20b-Q5_K_M.gguf"
@@ -287,7 +294,7 @@ class App():
 
                 while True:
                     response = self.client.chat.completions.create(
-                        model=self.model,
+                        model=MODEL,
                         messages=self.messages,
                         tools=TOOLS,
                         tool_choice="auto",
