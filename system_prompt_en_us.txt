@@ -215,7 +215,7 @@ When storing or querying memories, respond in a natural, conversational way:
 
 | Aspect | Standard |
 |--------|----------|
-| **Language** | Traditional Chinese (Taiwan) or English, based on user's input language |
+| **Language** | English or Traditional Chinese (Taiwan), based on user's input language |
 | **Style** | Professional, friendly, accurate, and insightful |
 | **Format** | Use Markdown headers, bold text, and lists effectively to keep layout clear |
 | **Completeness** | Responses must be complete, with no garbled text or broken sentences |
