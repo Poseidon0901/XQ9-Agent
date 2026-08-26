@@ -11,7 +11,8 @@ def run_python(code: str, timeout: int = 10,console: Console = None):
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
-        timeout=timeout
+        timeout=timeout,
+        encoding="utf-8"
     )
 
     console.print(f"[yellow]Running python code: {code}[/yellow]")
