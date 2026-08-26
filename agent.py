@@ -21,6 +21,10 @@ API_URL = os.getenv("API_URL")
 API_KEY = os.getenv("API_KEY")
 MODEL = os.getenv("MODEL")
 
+print("API_URL =", repr(API_URL))
+print("MODEL =", repr(MODEL))
+print("API_KEY =", repr(API_KEY[:10] + "...") if API_KEY else None)
+
 MAX_TOTAL_TOOL_CALLS = 30
 MAX_SEARCH_CALLS = 5
 MAX_OPEN_URL_CALLS = 10
@@ -43,7 +47,6 @@ class App():
             api_key=API_KEY
         )
         self.launch_timestamp = datetime.now().strftime('%Y-%m-%d.%H.%M.%S')
-        self.model = r"C:\Users\Blackcat\llama.cpp\models\gpt-oss-20b-Q5_K_M.gguf"
 
         self.last_search_results = []
         self.last_search_query = ""
@@ -151,6 +154,31 @@ class App():
             return self.commands[command]()
         return CommandResult.PROCESS
 
+    def _extract_url_from_input(self, text: str) -> str | None:
+        pattern = r'https?://[^\s\'"]+'
+        match = re.search(pattern, text)
+        if match:
+            return match.group(0)
+        return None
+
+    def _add_url_to_search_results(self, url: str, query: str = None):
+        if query is None:
+            query = f"URL: {url}"
+
+        for result in self.last_search_results:
+            if result.get("url") == url:
+                return
+
+        self.last_search_results.append({
+            "title": f"URL: {url}",
+            "snippet": f"User provided URL: {url}",
+            "url": url
+        })
+        
+        self.last_search_query = query
+        self.console.print(f"[green]✓ Added URL to search results:[/green] {url}")
+        self.console.print(f"[dim]Use index {len(self.last_search_results)} to open it.[/dim]")
+
     def _format_search_results(self, results: list, query: str) -> str:
         if not results:
             return f"No result for: '{query}'"
@@ -243,10 +271,6 @@ class App():
         
         return result
 
-    def _execute_open_url(self, url: str) -> dict:
-        result = open_url(url, console=self.console, launch_timestamp=self.launch_timestamp)
-        return result
-
     def _cleanup_old_messages(self):
         if len(self.messages) > 20:
             new_messages = [self.messages[0]]
@@ -270,6 +294,11 @@ class App():
                         break
                     elif result == CommandResult.CONTINUE:
                         continue
+
+                extracted_url = self._extract_url_from_input(user_input)
+                if extracted_url:
+                    self._add_url_to_search_results(extracted_url)
+                    self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
                 if len(self.messages) == 0:
                     has_chinese = bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', user_input))
@@ -409,21 +438,6 @@ class App():
                                     else:
                                         open_url_calls += 1
                                         result = self._execute_open_url_by_index(index)
-
-                            elif function_name == "open_url":
-                                url = arguments.get("url", 0)
-                                try:
-                                    url = str(url)
-                                except (ValueError, TypeError):
-                                    result = {
-                                        "error": f"Invalid url: {url}. Please submit a string."
-                                    }
-                                else:
-                                    if open_url_calls >= MAX_OPEN_URL_CALLS:
-                                        result = {"error": "open_url limit reached."}
-                                    else:
-                                        open_url_calls += 1
-                                        result = self._execute_open_url(url)
 
                             elif function_name == "run_python":
                                 code = arguments.get("code", "")
