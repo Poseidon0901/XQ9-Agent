@@ -32,9 +32,12 @@ API_URL = os.getenv("API_URL")
 API_KEY = os.getenv("API_KEY")
 MODEL = os.getenv("MODEL")
 
-print("API_URL =", repr(API_URL))
-print("MODEL =", repr(MODEL))
-print("API_KEY =", repr(API_KEY[:10] + "...") if API_KEY else None)
+if API_URL:
+    print("API_URL =", repr(API_URL))
+if MODEL:
+    print("MODEL =", repr(MODEL))
+if API_KEY:
+    print("API_KEY =", repr(API_KEY[:10] + "...") if len(API_KEY) > 10 else "***")
 
 
 class CommandResult(Enum):
@@ -56,6 +59,9 @@ class App():
         self.last_search_results = []
         self.last_search_query = ""
 
+        self.use_system_prompt = True
+        self.use_tools = True
+
         self.commands = {
             "exit": self.cmd_exit,
             "quit": self.cmd_exit,
@@ -65,6 +71,8 @@ class App():
             "deletelogs": self.cmd_clearlogs,
             "logs": self.cmd_logs,
             "showlogs": self.cmd_logs,
+            "switchsystemprompt": self.cmd_switchsystemprompt,
+            "switchtools": self.cmd_switchtools
         }
 
         self.tool_handler = ToolHandler(self)
@@ -152,6 +160,30 @@ class App():
                 self.console.print(f"  {os.path.basename(f)} ({size} KB)")
         return CommandResult.CONTINUE
 
+    def cmd_switchsystemprompt(self):
+        self.use_system_prompt = not self.use_system_prompt
+
+        if self.use_system_prompt:
+            if not self.messages or self.messages[0]["role"] != "system":
+                self.messages.insert(0, {
+                    "role": "system",
+                    "status": "waiting for new system prompt",
+                    "content": ""
+                })
+        else:
+            if self.messages and self.messages[0]["role"] == "system":
+                self.messages.pop(0)
+
+        status = "enabled" if self.use_system_prompt else "disabled"
+        self.console.print(f"[yellow]System prompt {status}.[/yellow]")
+        return CommandResult.CONTINUE
+
+    def cmd_switchtools(self):
+        self.use_tools = not self.use_tools
+        status = "enabled" if self.use_tools else "disabled"
+        self.console.print(f"[yellow]Tools {status}.[/yellow]")
+        return CommandResult.CONTINUE
+
     def command_handler(self, command: str) -> CommandResult:
         command = command.lstrip('/').lower()
         if command in self.commands:
@@ -192,17 +224,31 @@ class App():
                     self.tool_handler.add_url_to_search_results(extracted_url)
                     self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
-                if len(self.messages) == 0:
+                if self.use_system_prompt:
                     has_chinese = bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', user_input))
-                    self.messages.append({
-                        "role": "system",
-                        "content": self.system_message_zh_tw if has_chinese else self.system_message_en_us
-                    })
-                    if has_chinese:
-                        self.console.print("[yellow]Using zh_tw system prompt[/yellow]")
-                    else:
-                        self.console.print("[yellow]Using en_us system prompt[/yellow]")
-                
+                    system_prompt = self.system_message_zh_tw if has_chinese else self.system_message_en_us
+                    system_prompt_changed = False
+                    if len(self.messages) == 0:
+                        self.messages.append({
+                            "role": "system",
+                            "content": system_prompt
+                        })
+                        system_prompt_changed = True
+                    elif self.messages[0].get("status") == "waiting for new system prompt":
+                        self.messages.pop(0)
+                        self.messages.insert(0, {
+                            "role": "system",
+                            "content": system_prompt
+                        })
+                        system_prompt_changed = True
+
+                    if system_prompt_changed:
+                        self.console.print(
+                            "[yellow]Using zh_tw system prompt[/yellow]"
+                            if has_chinese
+                            else "[yellow]Using en_us system prompt[/yellow]"
+                        )
+
                 self.messages.append({
                     "role": "user",
                     "content": user_input
@@ -214,15 +260,22 @@ class App():
                 total_tool_calls = 0
 
                 while True:
-                    response = self.client.chat.completions.create(
-                        model=MODEL,
-                        messages=self.messages,
-                        tools=TOOLS,
-                        tool_choice="auto",
-                        extra_body={
+                    kwargs = {
+                        "model": MODEL,
+                        "messages": self.messages,
+                        "extra_body": {
                             "reasoning": True,
                             "reasoning_effort": "medium"
                         }
+                    }
+
+                    if self.use_tools:
+                        kwargs["tools"] = TOOLS
+                        kwargs["tool_choice"] = "auto"
+
+
+                    response = self.client.chat.completions.create(
+                        **kwargs
                     )
 
                     message = response.choices[0].message
