@@ -4,3 +4,5 @@ __pycache__/
 *.py[cod]
 logs/
 memories/
+.env.local
+checkmodels.py
