@@ -48,7 +48,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
    Create a `.env` file in the project root with the following:
    ```env
    API_KEY=your_api_key_here
-   API_URL=https://api.openai.com/v1/chat/completions
+   API_URL=https://api.openai.com/v1
    MODEL=gpt-4
    ```
 
