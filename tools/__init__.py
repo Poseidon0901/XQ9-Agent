@@ -24,25 +24,8 @@ TOOLS = [
     {
         "type": "function",
         "function": {
-            "name": "open_url",
-            "description": "Open and read ANY URL directly. Use this ONLY when: (1) the user gave you a URL, or (2) you already know the exact URL. DO NOT use this to open search results - use open_url_by_index for that.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "url": {
-                        "type": "string",
-                        "description": "The full URL to open."
-                    }
-                },
-                "required": ["url"]
-            }
-        }
-    },
-    {
-        "type": "function",
-        "function": {
             "name": "open_url_by_index",
-            "description": "Open a search result by index. Use this ONLY after web_search. NEVER use this unless you have just performed a search and are selecting from the results list.",
+            "description": "Open a search result by index. Use this to open any URL that is in the search results list. This includes URLs that the user directly provided (they are automatically added to the search results). NEVER use this unless the URL is in the search results list.",
             "parameters": {
                 "type": "object",
                 "properties": {
