@@ -1,7 +1,7 @@
 from urllib.parse import quote
 from .get_domain import get_domain
 from ddgs import DDGS
-import requests
+from curl_cffi import requests
 import json
 from bs4 import BeautifulSoup
 from rich.console import Console
