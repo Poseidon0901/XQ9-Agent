@@ -1,0 +1,115 @@
+[1mdiff --git a/agent.py b/agent.py[m
+[1mindex a5c24bb..d368501 100644[m
+[1m--- a/agent.py[m
+[1m+++ b/agent.py[m
+[36m@@ -4,6 +4,7 @@[m [mfrom rich.markdown import Markdown[m
+ import json[m
+ from datetime import datetime[m
+ import os[m
+[32m+[m[32mfrom pathlib import Path[m
+ from tools import TOOLS[m
+ from tools.manage_memories import get_memory_manager[m
+ from tools.handler import ToolHandler[m
+[36m@@ -37,7 +38,7 @@[m [mif API_URL:[m
+ if MODEL:[m
+     print("MODEL =", repr(MODEL))[m
+ if API_KEY:[m
+[31m-    print("API_KEY =", repr(API_KEY[:10] + "...") if len(API_KEY) > 10 else "***")[m
+[32m+[m[32m    print(f"API_KEY = {f'{API_KEY[:10]}...' if len(API_KEY) > 10 else '***'}")[m
+ [m
+ [m
+ class CommandResult(Enum):[m
+[36m@@ -62,27 +63,10 @@[m [mclass App():[m
+         self.use_system_prompt = True[m
+         self.use_tools = True[m
+ [m
+[31m-        self.commands = {[m
+[31m-            "exit": self.cmd_exit,[m
+[31m-            "quit": self.cmd_exit,[m
+[31m-            "clear": self.cmd_clear,[m
+[31m-            "erase": self.cmd_clear,[m
+[31m-            "clearlogs": self.cmd_clearlogs,[m
+[31m-            "deletelogs": self.cmd_clearlogs,[m
+[31m-            "logs": self.cmd_logs,[m
+[31m-            "showlogs": self.cmd_logs,[m
+[31m-            "togglesystemprompt": self.cmd_togglesystemprompt,[m
+[31m-            "toggletools": self.cmd_toggletools[m
+[31m-        }[m
+[31m-[m
+         self.tool_handler = ToolHandler(self)[m
+ [m
+[31m-        self.system_message_zh_tw = ""[m
+[31m-        self.system_message_en_us = ""[m
+[31m-        with open("system_prompt_zh_tw.txt", "r", encoding="utf-8") as f:[m
+[31m-            self.system_message_zh_tw = f.read()[m
+[31m-        with open("system_prompt_en_us.txt", "r", encoding="utf-8") as f:[m
+[31m-            self.system_message_en_us = f.read()[m
+[32m+[m[32m        self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")[m
+[32m+[m[32m        self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")[m
+ [m
+         self.messages = [][m
+ [m
+[36m@@ -90,23 +74,22 @@[m [mclass App():[m
+         self.memory_manager = get_memory_manager()[m
+ [m
+     def init_log_files(self):[m
+[31m-        self.log_dir = "logs"[m
+[31m-        if not os.path.exists(self.log_dir):[m
+[31m-            os.makedirs(self.log_dir)[m
+[32m+[m[32m        self.log_dir = Path("logs")[m
+[32m+[m[32m        self.log_dir.mkdir(exist_ok=True)[m
+         [m
+[31m-        self.web_search_log = os.path.join(self.log_dir, f"web_search_{self.launch_timestamp}.log")[m
+[31m-        if not os.path.exists(self.web_search_log):[m
+[31m-            with open(self.web_search_log, "w", encoding="utf-8") as f:[m
+[31m-                f.write("# Web Search Log\n")[m
+[31m-                f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")[m
+[31m-                f.write("# " + "="*70 + "\n\n")[m
+[32m+[m[32m        self.web_search_log = self.log_dir / f"web_search_{self.launch_timestamp}.log"[m
+[32m+[m[32m        if not self.web_search_log.exists():[m
+[32m+[m[32m            self.web_search_log.write_text([m
+[32m+[m[32m                f"# Web Search Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",[m
+[32m+[m[32m                encoding="utf-8"[m
+[32m+[m[32m            )[m
+         [m
+[31m-        self.open_url_log = os.path.join(self.log_dir, f"open_url_{self.launch_timestamp}.log")[m
+[31m-        if not os.path.exists(self.open_url_log):[m
+[31m-            with open(self.open_url_log, "w", encoding="utf-8") as f:[m
+[31m-                f.write("# Open URL Log\n")[m
+[31m-                f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")[m
+[31m-                f.write("# " + "="*70 + "\n\n")[m
+[32m+[m[32m        self.open_url_log = self.log_dir / f"open_url_{self.launch_timestamp}.log"[m
+[32m+[m[32m        if not self.open_url_log.exists():[m
+[32m+[m[32m            self.open_url_log.write_text([m
+[32m+[m[32m                f"# Open URL Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",[m
+[32m+[m[32m                encoding="utf-8"[m
+[32m+[m[32m            )[m
+ [m
+     def cmd_exit(self):[m
+         return CommandResult.BREAK[m
+[36m@@ -185,10 +168,21 @@[m [mclass App():[m
+         return CommandResult.CONTINUE[m
+ [m
+     def command_handler(self, command: str) -> CommandResult:[m
+[31m-        command = command.lstrip('/').lower()[m
+[31m-        if command in self.commands:[m
+[31m-            return self.commands[command]()[m
+[31m-        return CommandResult.PROCESS[m
+[32m+[m[32m        match command.lstrip('/').lower():[m
+[32m+[m[32m            case "exit" | "quit":[m
+[32m+[m[32m                return self.cmd_exit()[m
+[32m+[m[32m            case "clear" | "erase":[m
+[32m+[m[32m                return self.cmd_clear()[m
+[32m+[m[32m            case "clearlogs" | "deletelogs":[m
+[32m+[m[32m                return self.cmd_clearlogs()[m
+[32m+[m[32m            case "logs" | "showlogs":[m
+[32m+[m[32m                return self.cmd_logs()[m
+[32m+[m[32m            case "togglesystemprompt":[m
+[32m+[m[32m                return self.cmd_togglesystemprompt()[m
+[32m+[m[32m            case "toggletools":[m
+[32m+[m[32m                return self.cmd_toggletools()[m
+[32m+[m[32m            case _:[m
+[32m+[m[32m                return CommandResult.PROCESS[m
+ [m
+     def _extract_url_from_input(self, text: str) -> str | None:[m
+         pattern = r'https?://[^\s\'"]+'[m

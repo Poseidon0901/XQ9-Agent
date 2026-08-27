@@ -4,6 +4,7 @@ from rich.markdown import Markdown
 import json
 from datetime import datetime
 import os
+from pathlib import Path
 from tools import TOOLS
 from tools.manage_memories import get_memory_manager
 from tools.handler import ToolHandler
@@ -37,7 +38,7 @@ if API_URL:
 if MODEL:
     print("MODEL =", repr(MODEL))
 if API_KEY:
-    print("API_KEY =", repr(API_KEY[:10] + "...") if len(API_KEY) > 10 else "***")
+    print(f"API_KEY = {f'{API_KEY[:10]}...' if len(API_KEY) > 10 else '***'}")
 
 
 class CommandResult(Enum):
@@ -62,27 +63,10 @@ class App():
         self.use_system_prompt = True
         self.use_tools = True
 
-        self.commands = {
-            "exit": self.cmd_exit,
-            "quit": self.cmd_exit,
-            "clear": self.cmd_clear,
-            "erase": self.cmd_clear,
-            "clearlogs": self.cmd_clearlogs,
-            "deletelogs": self.cmd_clearlogs,
-            "logs": self.cmd_logs,
-            "showlogs": self.cmd_logs,
-            "togglesystemprompt": self.cmd_togglesystemprompt,
-            "toggletools": self.cmd_toggletools
-        }
-
         self.tool_handler = ToolHandler(self)
 
-        self.system_message_zh_tw = ""
-        self.system_message_en_us = ""
-        with open("system_prompt_zh_tw.txt", "r", encoding="utf-8") as f:
-            self.system_message_zh_tw = f.read()
-        with open("system_prompt_en_us.txt", "r", encoding="utf-8") as f:
-            self.system_message_en_us = f.read()
+        self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")
+        self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")
 
         self.messages = []
 
@@ -90,23 +74,22 @@ class App():
         self.memory_manager = get_memory_manager()
 
     def init_log_files(self):
-        self.log_dir = "logs"
-        if not os.path.exists(self.log_dir):
-            os.makedirs(self.log_dir)
+        self.log_dir = Path("logs")
+        self.log_dir.mkdir(exist_ok=True)
         
-        self.web_search_log = os.path.join(self.log_dir, f"web_search_{self.launch_timestamp}.log")
-        if not os.path.exists(self.web_search_log):
-            with open(self.web_search_log, "w", encoding="utf-8") as f:
-                f.write("# Web Search Log\n")
-                f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("# " + "="*70 + "\n\n")
+        self.web_search_log = self.log_dir / f"web_search_{self.launch_timestamp}.log"
+        if not self.web_search_log.exists():
+            self.web_search_log.write_text(
+                f"# Web Search Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
+                encoding="utf-8"
+            )
         
-        self.open_url_log = os.path.join(self.log_dir, f"open_url_{self.launch_timestamp}.log")
-        if not os.path.exists(self.open_url_log):
-            with open(self.open_url_log, "w", encoding="utf-8") as f:
-                f.write("# Open URL Log\n")
-                f.write(f"# Created: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write("# " + "="*70 + "\n\n")
+        self.open_url_log = self.log_dir / f"open_url_{self.launch_timestamp}.log"
+        if not self.open_url_log.exists():
+            self.open_url_log.write_text(
+                f"# Open URL Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
+                encoding="utf-8"
+            )
 
     def cmd_exit(self):
         return CommandResult.BREAK
@@ -185,10 +168,21 @@ class App():
         return CommandResult.CONTINUE
 
     def command_handler(self, command: str) -> CommandResult:
-        command = command.lstrip('/').lower()
-        if command in self.commands:
-            return self.commands[command]()
-        return CommandResult.PROCESS
+        match command.lstrip('/').lower():
+            case "exit" | "quit":
+                return self.cmd_exit()
+            case "clear" | "erase":
+                return self.cmd_clear()
+            case "clearlogs" | "deletelogs":
+                return self.cmd_clearlogs()
+            case "logs" | "showlogs":
+                return self.cmd_logs()
+            case "togglesystemprompt":
+                return self.cmd_togglesystemprompt()
+            case "toggletools":
+                return self.cmd_toggletools()
+            case _:
+                return CommandResult.PROCESS
 
     def _extract_url_from_input(self, text: str) -> str | None:
         pattern = r'https?://[^\s\'"]+'
