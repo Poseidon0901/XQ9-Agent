@@ -4,7 +4,4 @@ __pycache__/
 *.py[cod]
 logs/
 memories/
-.env.local
-checkmodels.py
-token_counter.py
-start-llama-server-gpt-oss-20b.ps1
+playground/
