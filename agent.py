@@ -13,6 +13,7 @@ import glob
 from enum import Enum, auto
 import sys
 import re
+import io
 from dotenv import load_dotenv
 
 from tools.config import MAX_TOTAL_TOOL_CALLS
@@ -26,6 +27,10 @@ if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     except AttributeError:
+        pass
+    try:
+        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
+    except Exception:
         pass
 
 load_dotenv()
@@ -278,36 +283,53 @@ class App():
                     reasoning_content = ""
                     tool_calls_dict = {}
 
-                    with Live(Markdown(""), console=self.console, refresh_per_second=10) as live:
-                        for chunk in stream:
-                            if not chunk.choices:
-                                continue
-                            
-                            delta = chunk.choices[0].delta
+                    try:
+                        with Live(Markdown(""), console=self.console, refresh_per_second=10) as live:
+                            for chunk in stream:
+                                if not chunk.choices:
+                                    continue
+                                
+                                delta = chunk.choices[0].delta
 
-                            reasoning = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
-                            if reasoning:
-                                reasoning_content += reasoning
-                                live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
-                            if delta.content:
-                                full_content += delta.content
-                                live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
-                            if delta.tool_calls:
-                                for tc in delta.tool_calls:
-                                    index = tc.index
-                                    if index not in tool_calls_dict:
-                                        tool_calls_dict[index] = {
-                                            "id": tc.id or "",
-                                            "name": tc.function.name if tc.function and tc.function.name else "",
-                                            "arguments": ""
-                                        }
-                                    if tc.id:
-                                        tool_calls_dict[index]["id"] = tc.id
-                                    if tc.function:
-                                        if tc.function.name:
-                                            tool_calls_dict[index]["name"] = tc.function.name
-                                        if tc.function.arguments:
-                                            tool_calls_dict[index]["arguments"] += tc.function.arguments
+                                reasoning = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
+                                if reasoning:
+                                    reasoning_content += reasoning
+                                    live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
+                                if delta.content:
+                                    full_content += delta.content
+                                    live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
+                                if delta.tool_calls:
+                                    for tc in delta.tool_calls:
+                                        index = tc.index
+                                        if index not in tool_calls_dict:
+                                            tool_calls_dict[index] = {
+                                                "id": tc.id or "",
+                                                "name": tc.function.name if tc.function and tc.function.name else "",
+                                                "arguments": ""
+                                            }
+                                        if tc.id:
+                                            tool_calls_dict[index]["id"] = tc.id
+                                        if tc.function:
+                                            if tc.function.name:
+                                                tool_calls_dict[index]["name"] = tc.function.name
+                                            if tc.function.arguments:
+                                                tool_calls_dict[index]["arguments"] += tc.function.arguments
+                                                
+                    except KeyboardInterrupt:
+                        try:
+                            stream.response.close()
+                        except:
+                            pass
+
+                        self.client.close()
+
+                        self.client = OpenAI(
+                            base_url=API_URL,
+                            api_key=API_KEY 
+                        )
+                        
+                        self.console.print("\n[yellow]Generation interrupted.[/yellow]")
+                        break
 
                     self.console.print("\n")
 
