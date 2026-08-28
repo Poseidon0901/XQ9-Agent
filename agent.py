@@ -1,5 +1,6 @@
 from openai import OpenAI
 from rich.console import Console
+from rich.live import Live
 from rich.markdown import Markdown
 import json
 from datetime import datetime
@@ -267,49 +268,78 @@ class App():
                         kwargs["tools"] = TOOLS
                         kwargs["tool_choice"] = "auto"
 
+                    kwargs["stream"] = True
 
-                    response = self.client.chat.completions.create(
-                        **kwargs
-                    )
+                    stream = self.client.chat.completions.create(**kwargs)
 
-                    message = response.choices[0].message
+                    self.console.print("\n[bold green]AI >[/bold green]")
 
-                    reasoning = getattr(message, 'reasoning_content', None) or getattr(message, 'reasoning', None)
-                    if reasoning:
-                        self.console.print("\n[dim]Thinking:[/dim]")
-                        self.console.print(Markdown(f"> {reasoning}"))
-                        self.console.print("")
+                    full_content = ""
+                    reasoning_content = ""
+                    tool_calls_dict = {}
 
-                    if not message.tool_calls:
-                        answer = message.content or ""
+                    with Live(Markdown(""), console=self.console, refresh_per_second=10) as live:
+                        for chunk in stream:
+                            if not chunk.choices:
+                                continue
+                            
+                            delta = chunk.choices[0].delta
+
+                            reasoning = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
+                            if reasoning:
+                                reasoning_content += reasoning
+                                live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
+                            if delta.content:
+                                full_content += delta.content
+                                live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
+                            if delta.tool_calls:
+                                for tc in delta.tool_calls:
+                                    index = tc.index
+                                    if index not in tool_calls_dict:
+                                        tool_calls_dict[index] = {
+                                            "id": tc.id or "",
+                                            "name": tc.function.name if tc.function and tc.function.name else "",
+                                            "arguments": ""
+                                        }
+                                    if tc.id:
+                                        tool_calls_dict[index]["id"] = tc.id
+                                    if tc.function:
+                                        if tc.function.name:
+                                            tool_calls_dict[index]["name"] = tc.function.name
+                                        if tc.function.arguments:
+                                            tool_calls_dict[index]["arguments"] += tc.function.arguments
+
+                    self.console.print("\n")
+
+                    if not tool_calls_dict:
                         self.messages.append({
                             "role": "assistant",
-                            "content": answer
+                            "content": full_content
                         })
-                        self.console.print("\n[bold green]AI >[/bold green]")
-                        self.console.print(Markdown(answer))
-                        self.console.print("\n")
                         break
+
+                    formatted_tool_calls = [
+                        {
+                            "id": tool_data["id"],
+                            "type": "function",
+                            "function": {
+                                "name": tool_data["name"],
+                                "arguments": tool_data["arguments"]
+                            }
+                        }
+                        for tool_data in tool_calls_dict.values()
+                    ]
 
                     self.messages.append({
                         "role": "assistant",
-                        "content": message.content or "",
-                        "tool_calls": [
-                            {
-                                "id": tool_call.id,
-                                "type": "function",
-                                "function": {
-                                    "name": tool_call.function.name,
-                                    "arguments": tool_call.function.arguments
-                                }
-                            }
-                            for tool_call in message.tool_calls
-                        ]
+                        "content": full_content or "",
+                        "tool_calls": formatted_tool_calls
                     })
 
-                    for tool_call in message.tool_calls:
-                        tool_id = tool_call.id
-                        function_name = tool_call.function.name
+                    for tool_call in formatted_tool_calls:
+                        tool_id = tool_call["id"]
+                        function_name = tool_call["function"]["name"]
+                        raw_args = tool_call["function"]["arguments"]
 
                         if total_tool_calls >= MAX_TOTAL_TOOL_CALLS:
                             self.console.print("[red]Maximum tool calls reached.[/red]")
@@ -326,7 +356,7 @@ class App():
                         total_tool_calls += 1
 
                         try:
-                            arguments = json.loads(tool_call.function.arguments)
+                            arguments = json.loads(raw_args)
                             result = self.tool_handler.execute(function_name, arguments)
                         except json.JSONDecodeError as e:
                             result = {
