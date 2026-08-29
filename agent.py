@@ -224,10 +224,13 @@ class App():
                 return CommandResult.PROCESS
 
     def _extract_url_from_input(self, text: str) -> str | None:
-        pattern = r'https?://[^\s\'"]+'
-        match = re.search(pattern, text)
+        pattern = r'(?:https?://|www\.)[^\s\'"]+|[\w-]+\.(?:com|org|net|tw|jp|io|dev|ai|app)[^\s\'"]*'
+        match = re.search(pattern, text, re.IGNORECASE)
         if match:
-            return match.group(0)
+            url = match.group(0)
+            if not url.startswith(('http://', 'https://')):
+                url = 'https://' + url
+            return url
         return None
 
     def _cleanup_old_messages(self):
