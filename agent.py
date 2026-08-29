@@ -73,6 +73,8 @@ class App():
 
         self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")
         self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")
+        self.system_message_zh_tw_no_tools = Path("system_prompt_zh_tw_no_tools.txt").read_text(encoding="utf-8")
+        self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.txt").read_text(encoding="utf-8")
 
         self.messages = []
 
@@ -167,9 +169,40 @@ class App():
         self.console.print(f"[yellow]System prompt {status}.[/yellow]")
         return CommandResult.CONTINUE
 
+    def get_system_prompt(self, has_chinese: bool):
+        if self.use_tools:
+            return (
+                self.system_message_zh_tw
+                if has_chinese
+                else self.system_message_en_us
+            )
+        else:
+            return (
+                self.system_message_zh_tw_no_tools
+                if has_chinese
+                else self.system_message_en_us_no_tools
+            )
+
     def cmd_toggletools(self):
         self.use_tools = not self.use_tools
         status = "enabled" if self.use_tools else "disabled"
+
+        if self.use_system_prompt:
+            if self.messages and self.messages[0]["role"] == "system":
+                has_chinese = bool(
+                    re.search(
+                        r'[\u4e00-\u9fff\u3100-\u312f]',
+                        self.messages[0]["content"]
+                    )
+                )
+
+                self.messages[0]["content"] = self.get_system_prompt(has_chinese)
+            else:
+                self.messages.insert(0, {
+                    "role": "system",
+                    "content": self.get_system_prompt(False)
+                })
+
         self.console.print(f"[yellow]Tools {status}.[/yellow]")
         return CommandResult.CONTINUE
 
@@ -225,21 +258,25 @@ class App():
                     self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
                 if self.use_system_prompt:
-                    has_chinese = bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', user_input))
-                    system_prompt = self.system_message_zh_tw if has_chinese else self.system_message_en_us
+                    has_chinese = bool(
+                        re.search(r'[\u4e00-\u9fff\u3100-\u312f]', user_input)
+                    )
+                    system_prompt = self.get_system_prompt(has_chinese)
+
                     system_prompt_changed = False
-                    if len(self.messages) == 0:
+
+                    if not self.messages:
                         self.messages.append({
                             "role": "system",
                             "content": system_prompt
                         })
                         system_prompt_changed = True
+
                     elif self.messages[0].get("status") == "waiting for new system prompt":
-                        self.messages.pop(0)
-                        self.messages.insert(0, {
+                        self.messages[0] = {
                             "role": "system",
                             "content": system_prompt
-                        })
+                        }
                         system_prompt_changed = True
 
                     if system_prompt_changed:
@@ -336,7 +373,8 @@ class App():
                     if not tool_calls_dict:
                         self.messages.append({
                             "role": "assistant",
-                            "content": full_content
+                            "content": full_content,
+                            "reasoning_content": reasoning_content
                         })
                         break
 
@@ -355,6 +393,7 @@ class App():
                     self.messages.append({
                         "role": "assistant",
                         "content": full_content or "",
+                        "reasoning_content": reasoning_content or "",
                         "tool_calls": formatted_tool_calls
                     })
 
