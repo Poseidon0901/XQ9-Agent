@@ -1,41 +1,45 @@
-import json
-import os
+import sqlite3
+from contextlib import contextmanager
 from datetime import datetime
+from typing import Optional, Dict, Any
 from rich.console import Console
-from typing import Optional, List, Dict, Any
+from .config import MEMORY_DB_PATH, MAX_MEMORY_LIMIT
 
 class MemoryManager:
-    def __init__(self):
-        self.memory_dir = "memories"
-        
-        if not os.path.exists(self.memory_dir):
-            os.makedirs(self.memory_dir)
-
-        self.memory_file = os.path.join(self.memory_dir, "memories.json")
-        self._ensure_memory_file()
+    def __init__(self, db_path: str = MEMORY_DB_PATH):
+        self.db_path = db_path
+        self._init_database()
     
-    def _ensure_memory_file(self):
-        if not os.path.exists(self.memory_file):
-            with open(self.memory_file, "w", encoding="utf-8") as f:
-                json.dump([], f, ensure_ascii=False, indent=2)
-    
-    def _load_memories(self) -> List[Dict[str, Any]]:
+    @contextmanager
+    def _get_connection(self):
+        conn = sqlite3.connect(self.db_path)
+        conn.row_factory = sqlite3.Row
         try:
-            with open(self.memory_file, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
-            return []
+            yield conn
+        finally:
+            conn.close()
     
-    def _save_memories(self, memories: List[Dict[str, Any]]):
-        with open(self.memory_file, "w", encoding="utf-8") as f:
-            json.dump(memories, f, ensure_ascii=False, indent=2)
+    def _init_database(self):
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS memories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date TEXT NOT NULL,
+                    time TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            ''')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_date ON memories(date)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
+            conn.commit()
     
-    def create_memory(self, content: str, date: Optional[str] = None, time: Optional[str] = None) -> Dict[str, Any]:
+    def create_memory(self, content: str, date: Optional[str] = None, 
+                      time: Optional[str] = None) -> Dict[str, Any]:
         if not content or not content.strip():
-            return {
-                "success": False,
-                "error": "Content cannot be empty"
-            }
+            return {"success": False, "error": "Content cannot be empty"}
 
         if not date:
             date = datetime.now().strftime("%Y-%m-%d")
@@ -44,191 +48,169 @@ class MemoryManager:
 
         try:
             datetime.strptime(date, "%Y-%m-%d")
-        except ValueError:
-            return {
-                "success": False,
-                "error": f"Invalid date format: '{date}'. Use YYYY-MM-DD"
-            }
-
-        try:
             datetime.strptime(time, "%H:%M")
-        except ValueError:
+        except ValueError as e:
+            return {"success": False, "error": str(e)}
+        
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            now = datetime.now().isoformat()
+            cursor.execute('''
+                INSERT INTO memories (date, time, content, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (date, time, content.strip(), now, now))
+            conn.commit()
+            
+            memory_id = cursor.lastrowid
+            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            memory = dict(cursor.fetchone())
+            
             return {
-                "success": False,
-                "error": f"Invalid time format: '{time}'. Use HH:MM"
+                "success": True,
+                "message": f"Memory created successfully (ID: {memory_id})",
+                "memory": memory
             }
-        
-        memories = self._load_memories()
-
-        max_id = max([m.get("id", 0) for m in memories]) if memories else 0
-        
-        memory = {
-            "id": max_id + 1,
-            "date": date,
-            "time": time,
-            "content": content.strip(),
-            "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat()
-        }
-        
-        memories.append(memory)
-        self._save_memories(memories)
-        
-        return {
-            "success": True,
-            "message": f"Memory created successfully (ID: {memory['id']})",
-            "memory": memory
-        }
     
-    def read_memories(self, memory_id: Optional[int] = None, date: Optional[str] = None, 
+    def read_memories(self, memory_id: Optional[int] = None, 
+                      date: Optional[str] = None,
                       keyword: Optional[str] = None) -> Dict[str, Any]:
-        memories = self._load_memories()
-        
-        if not memories:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT * FROM memories WHERE 1=1"
+            params = []
+            
+            if memory_id is not None:
+                query += " AND id = ?"
+                params.append(memory_id)
+            
+            if date:
+                try:
+                    datetime.strptime(date, "%Y-%m-%d")
+                except ValueError:
+                    return {
+                        "success": False,
+                        "error": f"Invalid date format: '{date}'. Use YYYY-MM-DD"
+                    }
+                query += " AND date = ?"
+                params.append(date)
+            
+            if keyword and keyword.strip():
+                query += " AND content LIKE ?"
+                params.append(f"%{keyword.strip()}%")
+            
+            cursor.execute(query, params)
+            memories = [dict(row) for row in cursor.fetchall()]
+            
             return {
                 "success": True,
-                "message": "No memories found",
-                "memories": []
+                "message": f"Found {len(memories)} memory(ies)",
+                "memories": memories
             }
-
-        if memory_id is not None:
-            m = self.get_memory_by_id(memory_id)
-            if m:
-                return {
-                    "success": True,
-                    "message": f"Found memory ID {memory_id}",
-                    "memories": [m]
-                }
-            return {
-                "success": True,
-                "message": f"No memory found with ID {memory_id}",
-                "memories": []
-            }
-
-        if date:
-            try:
-                datetime.strptime(date, "%Y-%m-%d")
-            except ValueError:
-                return {
-                    "success": False,
-                    "error": f"Invalid date format: '{date}'. Use YYYY-MM-DD"
-                }
-            memories = [m for m in memories if m.get("date") == date]
-
-        if keyword and keyword.strip():
-            keyword_lower = keyword.strip().lower()
-            memories = [m for m in memories if keyword_lower in m.get("content", "").lower()]
-        
-        if not memories:
-            return {
-                "success": True,
-                "message": "No matching memories found",
-                "memories": []
-            }
-        
-        return {
-            "success": True,
-            "message": f"Found {len(memories)} memory(ies)",
-            "memories": memories
-        }
     
     def update_memory(self, memory_id: int, content: str) -> Dict[str, Any]:
         if not content or not content.strip():
-            return {
-                "success": False,
-                "error": "Content cannot be empty"
-            }
+            return {"success": False, "error": "Content cannot be empty"}
         
-        memories = self._load_memories()
-        
-        for memory in memories:
-            if memory.get("id") == memory_id:
-                memory["content"] = content.strip()
-                memory["updated_at"] = datetime.now().isoformat()
-                self._save_memories(memories)
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                UPDATE memories 
+                SET content = ?, updated_at = ?
+                WHERE id = ?
+            ''', (content.strip(), datetime.now().isoformat(), memory_id))
+            conn.commit()
+            
+            if cursor.rowcount == 0:
                 return {
-                    "success": True,
-                    "message": f"Memory {memory_id} updated successfully",
-                    "memory": memory
+                    "success": False,
+                    "error": f"Memory with ID {memory_id} not found"
                 }
-        
-        return {
-            "success": False,
-            "error": f"Memory with ID {memory_id} not found"
-        }
-    
-    def delete_memory(self, memory_id: int) -> Dict[str, Any]:
-        memories = self._load_memories()
-        
-        for i, memory in enumerate(memories):
-            if memory.get("id") == memory_id:
-                deleted_memory = memories.pop(i)
-                self._save_memories(memories)
-                return {
-                    "success": True,
-                    "message": f"Memory {memory_id} deleted successfully",
-                    "memory": deleted_memory
-                }
-        
-        return {
-            "success": False,
-            "error": f"Memory with ID {memory_id} not found"
-        }
-    
-    def clear_all_memories(self) -> Dict[str, Any]:
-        memories = self._load_memories()
-        count = len(memories)
-
-        self._save_memories([])
-
-        return {
-            "success": True,
-            "message": f"All memories cleared successfully ({count} memories)",
-            "deleted_count": count
-        }
-    
-    def list_memories(self, limit: int = 20) -> Dict[str, Any]:
-        memories = self._load_memories()
-        limit = max(1, min(limit, 200))
-        
-        if not memories:
+            
+            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            memory = dict(cursor.fetchone())
+            
             return {
                 "success": True,
-                "message": "No memories found",
-                "memories": [],
-                "total": 0
+                "message": f"Memory {memory_id} updated successfully",
+                "memory": memory
             }
-
-        memories_sorted = sorted(memories, key=lambda x: x.get("created_at", ""), reverse=True)
-
-        if len(memories_sorted) > limit:
-            memories_sorted = memories_sorted[:limit]
+    
+    def delete_memory(self, memory_id: int) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            deleted_memory = cursor.fetchone()
+            
+            if not deleted_memory:
+                return {
+                    "success": False,
+                    "error": f"Memory with ID {memory_id} not found"
+                }
+            
+            cursor.execute('DELETE FROM memories WHERE id = ?', (memory_id,))
+            conn.commit()
+            
+            return {
+                "success": True,
+                "message": f"Memory {memory_id} deleted successfully",
+                "memory": dict(deleted_memory)
+            }
+    
+    def clear_all_memories(self) -> Dict[str, Any]:
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) as total FROM memories')
+            count = cursor.fetchone()['total']
+            
+            cursor.execute('DELETE FROM memories')
+            conn.commit()
+            
+            return {
+                "success": True,
+                "message": f"All memories cleared successfully ({count} memories)",
+                "deleted_count": count
+            }
+    
+    def list_memories(self, limit: int = 20) -> Dict[str, Any]:
+        limit = max(1, min(limit, MAX_MEMORY_LIMIT))
         
-        summary = []
-        for m in memories_sorted:
-            summary.append({
-                "id": m.get("id"),
-                "date": m.get("date", ""),
-                "time": m.get("time", ""),
-                "content_preview": m.get("content", "")[:50] + ("..." if len(m.get("content", "")) > 50 else ""),
-                "created_at": m.get("created_at")
-            })
-        
-        return {
-            "success": True,
-            "message": f"Found {len(summary)} memories (total: {len(memories)})",
-            "memories": summary,
-            "total": len(memories)
-        }
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            
+            cursor.execute('SELECT COUNT(*) as total FROM memories')
+            total = cursor.fetchone()['total']
+            
+            cursor.execute('''
+                SELECT id, date, time, content, created_at
+                FROM memories
+                ORDER BY created_at DESC
+                LIMIT ?
+            ''', (limit,))
+            
+            memories = []
+            for row in cursor.fetchall():
+                content = row['content']
+                memories.append({
+                    "id": row['id'],
+                    "date": row['date'],
+                    "time": row['time'],
+                    "content_preview": content[:50] + ("..." if len(content) > 50 else ""),
+                    "created_at": row['created_at']
+                })
+            
+            return {
+                "success": True,
+                "message": f"Found {len(memories)} memories (total: {total})",
+                "memories": memories,
+                "total": total
+            }
     
     def get_memory_by_id(self, memory_id: int) -> Optional[Dict[str, Any]]:
-        memories = self._load_memories()
-        for m in memories:
-            if m.get("id") == memory_id:
-                return m
-        return None
-
-_memory_manager = None
+        with self._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            row = cursor.fetchone()
+            return dict(row) if row else None
 
 def get_memory_manager() -> MemoryManager:
     global _memory_manager

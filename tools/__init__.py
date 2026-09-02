@@ -63,15 +63,21 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "manage_memories",
-            "description": """Manage external memories that persist across all conversations.
+            "description": """Manage persistent memories stored in SQLite3 database (memories.db). Memories persist across all conversations.
 
 Operations:
 - create: Store new memory. Requires content. Optional date (YYYY-MM-DD) and time (HH:MM).
 - read: Retrieve memories. Can filter by memory_id, date, or keyword search.
 - update: Modify existing memory. Requires memory_id and new content.
 - delete: Remove a memory. Requires memory_id.
-- list: Show all memories summary (most recent first).
+- list: Show all memories summary (most recent first, max 200).
 - clear_all: Delete ALL memories - use with extreme caution!
+
+Memory System Features:
+- SQLite3 database for better performance and query capabilities
+- Automatic indexing on date and created_at for fast searches
+- Supports keyword search with LIKE queries
+- All memories are stored locally in memories.db
 
 Always query first before creating/updating to avoid duplicates.""",
             "parameters": {
@@ -100,7 +106,11 @@ Always query first before creating/updating to avoid duplicates.""",
                     },
                     "keyword": {
                         "type": "string",
-                        "description": "Search keyword for read operation. Searches within memory content."
+                        "description": "Search keyword for read operation. Searches within memory content using SQL LIKE."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results for list operation (default 20, max 200)"
                     }
                 },
                 "required": ["operation"]

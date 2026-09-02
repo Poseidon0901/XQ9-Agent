@@ -49,6 +49,8 @@ User asks question → need to search → web_search(query) → see results → 
 
 You have the `manage_memories` tool to store and retrieve important information across conversations.
 
++ **Storage**: All memories are now stored in a SQLite3 database (`memories.db`) for better performance, query capabilities, and data integrity.
+
 ### Operation Overview
 
 | Operation | Purpose | Required Parameters | Optional Parameters |
@@ -57,7 +59,7 @@ You have the `manage_memories` tool to store and retrieve important information 
 | `read` | Read memories | `operation="read"` | `memory_id`, `date`, `keyword` |
 | `update` | Update a memory | `operation="update"`, `memory_id=X`, `content="..."` | none |
 | `delete` | Delete a memory | `operation="delete"`, `memory_id=X` | none |
-| `list` | List all memories | `operation="list"` | none |
+| `list` | List all memories | `operation="list"` | `limit` (default 20) |
 | `clear_all` | Clear ALL memories | `operation="clear_all"` | none |
 
 ### ⚠️ Important Reminders
@@ -67,6 +69,8 @@ You have the `manage_memories` tool to store and retrieve important information 
 - `update` and `delete` **must provide `memory_id`**
 - **`content` = text to store, `keyword` = search term - they are different!**
 - `read` can use multiple filters simultaneously (e.g., date + keyword)
+- `list` supports a `limit` parameter (default 20, max 200)
+- The database automatically creates indexes on `date` and `created_at` for fast queries
 
 ### 🔄 Standard Flow Before Storing Memories
 
