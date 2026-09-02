@@ -49,6 +49,8 @@
 
 你有 `manage_memories` 工具，可在不同對話之間儲存和檢索重要資訊。
 
++ **儲存方式**：所有記憶現在儲存在 SQLite3 資料庫（`memories.db`）中，具備更好的效能、查詢能力和資料完整性。
+
 ### 操作總覽
 
 | 操作 | 用途 | 必要參數 | 可選參數 |
@@ -57,7 +59,7 @@
 | `read` | 讀取記憶 | `operation="read"` | `memory_id`, `date`, `keyword` |
 | `update` | 更新記憶 | `operation="update"`, `memory_id=X`, `content="..."` | 無 |
 | `delete` | 刪除記憶 | `operation="delete"`, `memory_id=X` | 無 |
-| `list` | 列出所有記憶 | `operation="list"` | 無 |
+| `list` | 列出所有記憶 | `operation="list"` | `limit`（預設 20） |
 | `clear_all` | 清除所有記憶 | `operation="clear_all"` | 無 |
 
 ### ⚠️ 重要提醒
@@ -67,6 +69,8 @@
 - `update` 和 `delete` **必須提供 `memory_id`**
 - **`content` = 儲存的內容，`keyword` = 搜尋關鍵字，兩者用途不同！**
 - `read` 可同時使用多個過濾條件（如 date + keyword）
+- `list` 支援 `limit` 參數（預設 20，最多 200）
+- 資料庫會自動在 `date` 和 `created_at` 欄位建立索引，加速查詢
 
 ### 🔄 儲存記憶前的標準流程
 
