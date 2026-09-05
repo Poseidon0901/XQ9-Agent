@@ -20,11 +20,6 @@ from tools.config import MAX_TOTAL_TOOL_CALLS
 
 if sys.platform == "win32":
     try:
-        import subprocess
-        subprocess.run("chcp 65001 > nul", shell=True, capture_output=True)
-    except Exception:
-        pass
-    try:
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     except AttributeError:
         pass
@@ -98,6 +93,12 @@ class App():
                 f"# Open URL Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
                 encoding="utf-8"
             )
+
+    @staticmethod
+    def _has_chinese(text:str)->bool:
+        if not text:
+            return False
+        return bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', text))
 
     def cmd_exit(self):
         return CommandResult.BREAK
@@ -189,14 +190,7 @@ class App():
 
         if self.use_system_prompt:
             if self.messages and self.messages[0]["role"] == "system":
-                has_chinese = bool(
-                    re.search(
-                        r'[\u4e00-\u9fff\u3100-\u312f]',
-                        self.messages[0]["content"]
-                    )
-                )
-
-                self.messages[0]["content"] = self.get_system_prompt(has_chinese)
+                self.messages[0]["content"] = self.get_system_prompt(self._has_chinese(self.messages[0]["content"]))
             else:
                 self.messages.insert(0, {
                     "role": "system",
@@ -235,7 +229,9 @@ class App():
 
     def _cleanup_old_messages(self):
         if len(self.messages) > 20:
-            new_messages = [self.messages[0]]
+            new_messages = []
+            if self.messages and self.messages[0]["role"] == "system":
+                new_messages.append(self.messages[0])
             new_messages.extend(self.messages[-10:])
             self.messages = new_messages
             self.console.print("[dim]Part of the conversation history was cleaned up to save memory.[/dim]")
@@ -261,9 +257,7 @@ class App():
                     self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
                 if self.use_system_prompt:
-                    has_chinese = bool(
-                        re.search(r'[\u4e00-\u9fff\u3100-\u312f]', user_input)
-                    )
+                    has_chinese = self._has_chinese(user_input)
                     system_prompt = self.get_system_prompt(has_chinese)
 
                     system_prompt_changed = False
@@ -315,7 +309,11 @@ class App():
 
                     kwargs["stream"] = True
 
-                    stream = self.client.chat.completions.create(**kwargs)
+                    try:
+                        stream = self.client.chat.completions.create(**kwargs)
+                    except Exception as api_err:
+                        self.console.print(f"[red]LLM API call failed: {api_err}[/red]")
+                        break
 
                     self.console.print("\n[bold green]AI >[/bold green]")
 
