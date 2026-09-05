@@ -6,8 +6,10 @@ import json
 from bs4 import BeautifulSoup
 from rich.console import Console
 import time
+import re
 from datetime import datetime
 from .normalize_url import normalize_url
+from pathlib import Path
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",
@@ -19,11 +21,9 @@ SUSPICIOUS_KEYWORDS = {
     "coming soon",
 }
 
-def log_web_search(query: str, results: list, launch_timestamp: str, method: str = None, error: str = None, raw_data: any = None):
+def log_web_search(query: str, results: list, log_file_path: Path, method: str = None, error: str = None, raw_data: any = None):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    log_file = f"logs/web_search_{launch_timestamp}.log"
-    
-    with open(log_file, "a", encoding="utf-8") as f:
+    with open(log_file_path, "a", encoding="utf-8") as f:
         f.write(f"\n{'='*70}\n")
         f.write(f"[{timestamp}] SEARCH: {query}\n")
         f.write(f"{'='*70}\n")
@@ -103,7 +103,7 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
 
     return False
 
-def _search_duckduckgo_html(query: str):
+def _search_duckduckgo_html(query: str, console: Console):
     results = []
     try:
         with DDGS() as ddgs:
@@ -129,7 +129,7 @@ def _search_duckduckgo_html(query: str):
         }
     }
 
-def _search_duckduckgo_api(query: str):
+def _search_duckduckgo_api(query: str, console: Console):
     api_url = "https://api.duckduckgo.com/"
     params = {
         "q": query,
@@ -165,7 +165,9 @@ def _search_duckduckgo_api(query: str):
 
     if data.get("Abstract", ""):
         url = data.get("AbstractURL", "")
-        if url and url.startswith(("http://", "https://")):
+        url = normalize_url(url)
+        if url and url.startswith(("http://", "https://")) and url not in seen_urls:
+            seen_urls.add(url)
             results.append({
                 "title": data.get("Heading", query),
                 "snippet": data["Abstract"][:500],
@@ -222,15 +224,8 @@ def _search_duckduckgo_api(query: str):
         "_raw_data": raw_data
     }
 
-def _search_wikipedia_api(query: str, lang: str = None, console: Console = None):
-    """Wikipedia 搜索，自動檢測語言"""
-    import re
-    
-    if lang is None:
-        if re.search(r'[\u4e00-\u9fff]', query):
-            lang = "zh"
-        else:
-            lang = "en"
+def _search_wikipedia_api(query: str, console: Console, lang: str = None):
+    has_traditional = bool(re.search(r'[\u3400‑\u4dbf\uFA0E‑\uFA2F]', query))
     
     console.print(f"[dim]Wikipedia API search ({lang}):[/dim] {query}")
     
@@ -248,7 +243,7 @@ def _search_wikipedia_api(query: str, lang: str = None, console: Console = None)
             "format": "json",
             "utf8": 1,
             "srlimit": 5,
-            "variant": "zh-tw"
+            **({"variant":"zh‑tw"} if has_traditional else {})
         }
         
         response = None
@@ -349,7 +344,6 @@ def _search_wikipedia_api(query: str, lang: str = None, console: Console = None)
 def web_search(query: str, console: Console, launch_timestamp: str):
     console.print(f"[yellow]Searching the internet for:[/yellow] {query}")
 
-    import re
     has_chinese = bool(re.search(r'[\u4e00-\u9fff]', query))
     
     if has_chinese:
@@ -372,10 +366,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
     for method in search_methods:
         try:
             console.print(f"[dim]Trying {method.__name__}...[/dim]")
-            if method.__name__ == "_search_wikipedia_api":
-                result = method(query, console=console)
-            else:
-                result = method(query)
+            result = method(query, console=console)
             
             if result and "_raw_data" in result:
                 raw_data = result["_raw_data"]
