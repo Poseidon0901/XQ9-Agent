@@ -212,6 +212,8 @@ class MemoryManager:
             row = cursor.fetchone()
             return dict(row) if row else None
 
+_memory_manager = None
+
 def get_memory_manager() -> MemoryManager:
     global _memory_manager
     if _memory_manager is None:
