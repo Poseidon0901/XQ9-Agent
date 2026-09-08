@@ -15,7 +15,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 - **🌐 Web Search** – Search the internet with automatic fallback mechanisms (DuckDuckGo, Wikipedia API)
 - **📖 URL Reading** – Extract and clean text content from any webpage, with built-in detection for domain parking pages
 - **🐍 Local Python Execution** – Run Python code directly on your local machine (equivalent to `python -c "code"`)
-- **🧠 Persistent Memory** – Store, retrieve, update, and delete memories across all conversations using JSON-based storage
+- **🧠 Persistent Memory** – Store, retrieve, update, and delete memories across all conversations using a local SQLite database
 - **🌍 Multilingual Support** – Automatically switches between Traditional Chinese and English system prompts based on user input
 - **🛠️ Rich CLI Interface** – Beautiful terminal output with Rich library, Markdown rendering, and colored logging
 - **📊 Comprehensive Logging** – All searches and URL opens are logged to the `logs/` directory for debugging
@@ -148,8 +148,7 @@ XQ9-Agent/
 │   ├── get_domain.py         # Domain extraction helper
 │   └── normalize_url.py      # URL normalization helper
 ├── logs/                     # Log files (auto-created)
-└── memories/                 # Memory storage (auto-created)
-    └── memories.json         # Persistent memory database
+└── memories.db               # Persistent SQLite memory database (auto-created)
 ```
 
 ## 🧠 Memory System
@@ -231,7 +230,7 @@ A: Yes! The agent is cross-platform and has been tested on all three operating s
 A: Yes, through the `run_python` tool, which has the same permissions as the Python process. Use responsibly.
 
 **Q: Where are my memories stored?**  
-A: All memories are stored locally in `memories/memories.json`. They persist across sessions.
+A: All memories are stored locally in `memories.db`, a SQLite database in the project root. They persist across sessions.
 
 **Q: Why am I getting "Domain parking detected" errors?**  
 A: The agent automatically skips pages that appear to be domain parking or for-sale pages. This is intentional to avoid wasting tool calls on irrelevant content.
