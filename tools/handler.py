@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from tools import web_search, open_url, run_python, manage_memories
+from tools import web_search, open_url, run_python, manage_memories, manage_files
 from tools.config import (
     MAX_TOTAL_TOOL_CALLS,
     MAX_SEARCH_CALLS,
@@ -16,7 +16,8 @@ class ToolHandler:
             "web_search": self.handle_web_search,
             "open_url_by_index": self.handle_open_url_by_index,
             "run_python": self.handle_run_python,
-            "manage_memories": self.handle_manage_memories
+            "manage_memories": self.handle_manage_memories,
+            "manage_files": self.handle_manage_files,
         }
 
         self.max_search_calls = MAX_SEARCH_CALLS
@@ -177,6 +178,23 @@ class ToolHandler:
             limit=limit
         )
         
+        return result
+
+    def handle_manage_files(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        operation = args.get("operation", "")
+        limit = args.get("limit", 20)
+
+        result = manage_files(
+            operation=operation,
+            file_path=args.get("file_path"),
+            content=args.get("content"),
+            date=args.get("date"),
+            time=args.get("time"),
+            keyword=args.get("keyword"),
+            console=self.app.console,
+            limit=limit,
+        )
+
         return result
 
     def _compress_results(self, results: list) -> list:
