@@ -2,6 +2,7 @@ from .open_url import open_url
 from .web_search import web_search
 from .run_python import run_python
 from .manage_memories import manage_memories, get_memory_manager
+from .manage_files import manage_files, get_file_manager
 
 TOOLS = [
     {
@@ -116,5 +117,56 @@ Always query first before creating/updating to avoid duplicates.""",
                 "required": ["operation"]
             }
         }
-    }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "manage_files",
+            "description": """Manage persistent files stored in the local filesystem.
+
+Operations:
+- create: Create a new file. Requires content.
+- read: Retrieve file contents.
+- update: Modify existing file contents. Requires file path and new content.
+- delete: Remove a file. Requires file path.
+- list: Show all files in the specified directory.
+- clear_all: Delete ALL files in the specified directory - use with extreme caution!
+""",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "operation": {
+                        "type": "string",
+                        "description": "Operation to perform",
+                        "enum": ["create", "read", "update", "delete", "list", "clear_all"]
+                    },
+                    "file_path": {
+                        "type": "string",
+                        "description": "Path to the file (required for update, delete, read; optional for create)"
+                    },
+                    "content": {
+                        "type": "string",
+                        "description": "File content. REQUIRED for create and update. Put the full text here."
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Date in YYYY-MM-DD format (optional for create/read)"
+                    },
+                    "time": {
+                        "type": "string",
+                        "description": "Time in HH:MM format (optional for create)"
+                    },
+                    "keyword": {
+                        "type": "string",
+                        "description": "Search keyword for read operation."
+                    },
+                    "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results for list operation (default 20, max 200)"
+                    }
+                },
+                "required": ["operation"]
+            }
+        }
+    },
 ]
