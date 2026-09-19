@@ -19,23 +19,15 @@ class FileManager:
             raise ValueError("file_path cannot be empty")
 
         p = Path(file_path)
-        if not p.is_absolute():
-            p = self.root_dir / p
+        if p.is_absolute():
+            return p.resolve()
 
-        resolved = p.resolve()
+        if p.parent == Path('.'):
+            return (self.root_dir / p).resolve()
 
-        if self.root_dir != resolved and self.root_dir not in resolved.parents:
-            raise ValueError(
-                f"Access denied: '{file_path}' is outside the allowed root "
-                f"directory ({self.root_dir})"
-            )
-        return resolved
+        return p.resolve()
 
-    def create_file(
-        self,
-        content: str,
-        file_path: Optional[str] = None,
-    ) -> Dict[str, Any]:
+    def create_file(self, content: str, file_path: Optional[str] = None) -> Dict[str, Any]:
         if content is None:
             return {"success": False, "error": "Content is required for create"}
 
@@ -152,17 +144,16 @@ class FileManager:
         except Exception as e:
             return {"success": False, "error": f"Failed to delete: {e}"}
 
-    def list_files(
-        self,
-        directory: Optional[str] = None,
-        limit: int = 20,
-    ) -> Dict[str, Any]:
+    def list_files(self, directory: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
         limit = max(1, min(int(limit), MAX_FILE_LIMIT))
 
-        try:
-            base = self._resolve(directory) if directory else self.root_dir
-        except ValueError as e:
-            return {"success": False, "error": str(e)}
+        if directory is None or str(directory).strip() == "":
+            base = self.root_dir
+        else:
+            try:
+                base = self._resolve(directory)
+            except ValueError as e:
+                return {"success": False, "error": str(e)}
 
         if not base.exists():
             return {"success": False, "error": f"Directory not found: {base}"}
@@ -173,17 +164,13 @@ class FileManager:
         for entry in sorted(base.iterdir(), key=lambda p: p.name.lower()):
             try:
                 stat = entry.stat()
-                entries.append(
-                    {
-                        "name": entry.name,
-                        "path": str(entry),
-                        "type": "dir" if entry.is_dir() else "file",
-                        "size": stat.st_size if entry.is_file() else None,
-                        "modified_at": datetime.fromtimestamp(
-                            stat.st_mtime
-                        ).isoformat(),
-                    }
-                )
+                entries.append({
+                    "name": entry.name,
+                    "path": str(entry),
+                    "type": "dir" if entry.is_dir() else "file",
+                    "size": stat.st_size if entry.is_file() else None,
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                })
             except Exception:
                 continue
 
@@ -199,8 +186,14 @@ class FileManager:
         }
 
     def clear_all(self, directory: Optional[str] = None) -> Dict[str, Any]:
+        if directory is None or str(directory).strip() == "":
+            return {
+                "success": False,
+                "error": "Refusing to clear without a directory. Specify a subdirectory (e.g. 'temp').",
+            }
+
         try:
-            base = self._resolve(directory) if directory else self.root_dir
+            base = self._resolve(directory)
         except ValueError as e:
             return {"success": False, "error": str(e)}
 
@@ -210,10 +203,7 @@ class FileManager:
         if base == self.root_dir:
             return {
                 "success": False,
-                "error": (
-                    "Refusing to clear the root directory. "
-                    "Specify a subdirectory (e.g. 'temp')."
-                ),
+                "error": "Refusing to clear the root directory. Specify a subdirectory (e.g. 'temp').",
             }
 
         deleted = 0

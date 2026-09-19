@@ -164,6 +164,24 @@ The `manage_memories` tool provides persistent storage across all sessions:
 | `list` | Show all memories | `manage_memories(operation="list")` |
 | `clear_all` | Delete ALL memories | `manage_memories(operation="clear_all")` |
 
+## 📁 File System
+
+The `manage_files` tool provides persistent file storage. By default, files are stored in the `agent_workspace/` directory. You can specify a custom location by providing a `file_path`:
+
+- A bare filename (e.g., `notes.txt`) is placed in `agent_workspace/`.
+- A path with directory components (e.g., `subdir/notes.txt` or an absolute path) is used as-is (relative paths are resolved from the current working directory).
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `create` | Create a new file | `manage_files(operation="create", file_path="notes.txt", content="Hello")` |
+| `read` | Read a file | `manage_files(operation="read", file_path="notes.txt")` |
+| `update` | Update an existing file | `manage_files(operation="update", file_path="notes.txt", content="Updated")` |
+| `delete` | Delete a file | `manage_files(operation="delete", file_path="notes.txt")` |
+| `list` | List files in a directory | `manage_files(operation="list")` |
+| `clear_all` | Delete all files in a subdirectory | `manage_files(operation="clear_all", file_path="temp")` |
+
+**Note**: `clear_all` refuses to clear the root `agent_workspace/` directory. You must specify a subdirectory.
+
 ## 🛡️ Safety Features
 
 - **Tool call limits**: Prevents infinite loops and excessive API usage
@@ -172,6 +190,7 @@ The `manage_memories` tool provides persistent storage across all sessions:
 - **Domain parking detection**: Avoids reading empty or advertisement pages
 - **Automatic conversation cleanup**: Trims old messages to save memory and tokens
 - **Comprehensive error handling**: Graceful recovery from failures
+- **File access**: `manage_files` can access the local filesystem (same permissions as `run_python`). Use responsibly.
 
 ## 🔧 Configuration
 
@@ -234,3 +253,6 @@ A: All memories are stored locally in `memories.db`, a SQLite database in the pr
 
 **Q: Why am I getting "Domain parking detected" errors?**  
 A: The agent automatically skips pages that appear to be domain parking or for-sale pages. This is intentional to avoid wasting tool calls on irrelevant content.
+
+**Q: Where are my files stored?**  
+A: By default, files managed by `manage_files` are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`. Files persist across sessions.
