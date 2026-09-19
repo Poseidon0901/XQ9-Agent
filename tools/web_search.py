@@ -362,6 +362,8 @@ def web_search(query: str, console: Console, launch_timestamp: str):
     last_error = None
     successful_method = None
     raw_data = None
+
+    log_file_path = Path("logs") / f"web_search_{launch_timestamp}.log"
     
     for method in search_methods:
         try:
@@ -386,7 +388,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
     if not results:
         error_msg = f"All search methods failed. Last error: {last_error}"
         console.print(f"[red]{error_msg}[/red]")
-        log_web_search(query, [], error=error_msg, raw_data=raw_data, launch_timestamp=launch_timestamp)
+        log_web_search(query, [], log_file_path, error=error_msg, raw_data=raw_data)
         return {
             "query": query,
             "error": error_msg,
@@ -420,6 +422,5 @@ def web_search(query: str, console: Console, launch_timestamp: str):
         "method": successful_method
     }
     
-    log_web_search(query=query, results=filtered_results, method=successful_method, raw_data=raw_data, launch_timestamp=launch_timestamp)
-    
+    log_web_search(query=query, results=filtered_results, log_file_path=log_file_path, method=successful_method, raw_data=raw_data)
     return final_result
