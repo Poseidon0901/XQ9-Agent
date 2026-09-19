@@ -124,13 +124,15 @@ Always query first before creating/updating to avoid duplicates.""",
             "name": "manage_files",
             "description": """Manage persistent files stored in the local filesystem.
 
+By default, files are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`. If `file_path` is a bare filename (e.g., "notes.txt"), it will be placed in `agent_workspace/`. If it contains directory components (e.g., "subdir/notes.txt" or an absolute path), that location will be used.
+
 Operations:
-- create: Create a new file. Requires content.
-- read: Retrieve file contents.
-- update: Modify existing file contents. Requires file path and new content.
-- delete: Remove a file. Requires file path.
-- list: Show all files in the specified directory.
-- clear_all: Delete ALL files in the specified directory - use with extreme caution!
+- create: Create a new file. Requires content. Optional file_path (default: untitled_<timestamp>.txt in agent_workspace).
+- read: Retrieve file contents. Requires file_path.
+- update: Modify existing file contents. Requires file_path and content.
+- delete: Remove a file. Requires file_path.
+- list: Show all files in the specified directory. Optional file_path (default: agent_workspace). Optional limit (default 20, max 200).
+- clear_all: Delete ALL files in the specified directory. Requires file_path (must not be the root agent_workspace).
 """,
             "parameters": {
                 "type": "object",
@@ -142,23 +144,11 @@ Operations:
                     },
                     "file_path": {
                         "type": "string",
-                        "description": "Path to the file (required for update, delete, read; optional for create)"
+                        "description": "Path to the file or directory. If not provided, defaults to agent_workspace for create and list. For read/update/delete, this is required."
                     },
                     "content": {
                         "type": "string",
                         "description": "File content. REQUIRED for create and update. Put the full text here."
-                    },
-                    "date": {
-                        "type": "string",
-                        "description": "Date in YYYY-MM-DD format (optional for create/read)"
-                    },
-                    "time": {
-                        "type": "string",
-                        "description": "Time in HH:MM format (optional for create)"
-                    },
-                    "keyword": {
-                        "type": "string",
-                        "description": "Search keyword for read operation."
                     },
                     "limit": {
                         "type": "integer",
@@ -168,5 +158,5 @@ Operations:
                 "required": ["operation"]
             }
         }
-    },
+    }
 ]

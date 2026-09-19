@@ -153,6 +153,64 @@ Suggestion: Update ID 1 with the latest content, delete ID 2
 → delete(memory_id=2)
 ```
 
+## File Management Feature 📁
+
+You have the `manage_files` tool to manage persistent files stored in the local filesystem.
+
++ **Default Location**: If no `file_path` is provided, files are stored in the `agent_workspace/` directory.
++ **Specified Location**: If a `file_path` is provided:
+  - A bare filename (e.g., `notes.txt`) is placed in `agent_workspace/`.
+  - A path with directory components (e.g., `subdir/notes.txt` or an absolute path) is used as-is (relative paths are resolved from the current working directory).
+
+### Operation Overview
+
+| Operation | Purpose | Required Parameters | Optional Parameters |
+|-----------|---------|---------------------|---------------------|
+| `create` | Create a new file | `operation="create"`, `content="..."` | `file_path` (default: `untitled_<timestamp>.txt` in `agent_workspace/`) |
+| `read` | Read a file | `operation="read"`, `file_path="..."` | none |
+| `update` | Update an existing file | `operation="update"`, `file_path="..."`, `content="..."` | none |
+| `delete` | Delete a file | `operation="delete"`, `file_path="..."` | none |
+| `list` | List files in a directory | `operation="list"` | `file_path` (directory, default: `agent_workspace/`), `limit` (default 20, max 200) |
+| `clear_all` | Delete ALL files in a directory | `operation="clear_all"`, `file_path="..."` | none (directory must not be the root `agent_workspace/`) |
+
+### ⚠️ Important Reminders
+
+- `create` will fail if the file already exists. Use `update` instead.
+- `update` requires the file to exist.
+- `delete` can remove files or directories.
+- `clear_all` refuses to clear the root `agent_workspace/` directory. You must specify a subdirectory.
+- The `date`, `time`, and `keyword` parameters are not used by this tool.
+
+### ✅ When to Use
+
+- User asks to save, read, list, or delete files.
+- You need to store code, notes, configuration, or any persistent content.
+- User wants to organize files in a workspace.
+
+### ❌ When NOT to Use
+
+- Do not use for temporary execution (use `run_python` instead).
+
+### 💡 Example
+
+```
+User: "Save this code to hello.py"
+→ manage_files(operation="create", file_path="hello.py", content="print('Hello')")
+→ File created: .../agent_workspace/hello.py
+
+User: "Save to C:\temp\hello.py"
+→ manage_files(operation="create", file_path="C:\\temp\\hello.py", content="print('Hello')")
+→ File created: C:\temp\hello.py
+
+User: "List all files"
+→ manage_files(operation="list")
+→ Shows files in agent_workspace
+
+User: "Read hello.py"
+→ manage_files(operation="read", file_path="hello.py")
+→ Returns content
+```
+
 ### 💡 Response Style
 
 When storing or querying memories, respond in a natural, conversational way:

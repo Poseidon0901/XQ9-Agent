@@ -47,7 +47,6 @@ class CommandResult(Enum):
     CONTINUE = auto()
     PROCESS = auto()
 
-
 class App():
     def __init__(self):
         self.console = Console()
@@ -291,8 +290,6 @@ class App():
                 if len(self.messages) > 30:
                     self._cleanup_old_messages()
 
-                total_tool_calls = 0
-
                 while True:
                     kwargs = {
                         "model": MODEL,
@@ -402,21 +399,6 @@ class App():
                         tool_id = tool_call["id"]
                         function_name = tool_call["function"]["name"]
                         raw_args = tool_call["function"]["arguments"]
-
-                        if total_tool_calls >= MAX_TOTAL_TOOL_CALLS:
-                            self.console.print("[red]Maximum tool calls reached.[/red]")
-                            result = {
-                                "error": "Maximum tool call limit reached. Please answer using the information already available."
-                            }
-                            self.messages.append({
-                                "role": "tool",
-                                "tool_call_id": tool_id,
-                                "content": json.dumps(result, ensure_ascii=False)
-                            })
-                            continue
-                        
-                        total_tool_calls += 1
-
                         try:
                             arguments = json.loads(raw_args)
                             result = self.tool_handler.execute(function_name, arguments)
