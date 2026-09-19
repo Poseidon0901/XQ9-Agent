@@ -166,7 +166,9 @@ The `manage_memories` tool provides persistent storage across all sessions:
 
 ## 📁 File System
 
-The `manage_files` tool provides persistent file storage. By default, files are stored in the `agent_workspace/` directory. You can specify a custom location by providing a `file_path`:
+The `manage_files` tool provides persistent file storage. By default, files are stored in the `agent_workspace/` directory. 
+**Note:** manage_files is NOT sandboxed. If `file_path` contains directory components (including absolute paths or `..`), it will be used as-is. The `agent_workspace/` default only applies when no path is provided. Use with the same caution as `run_python`.
+You can specify a custom location by providing a `file_path`:
 
 - A bare filename (e.g., `notes.txt`) is placed in `agent_workspace/`.
 - A path with directory components (e.g., `subdir/notes.txt` or an absolute path) is used as-is (relative paths are resolved from the current working directory).
