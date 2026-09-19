@@ -256,3 +256,6 @@ A: The agent automatically skips pages that appear to be domain parking or for-s
 
 **Q: Where are my files stored?**  
 A: By default, files managed by `manage_files` are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`. Files persist across sessions.
+
+## Something not that important
+who will use this?
