@@ -227,13 +227,25 @@ class App():
         return None
 
     def _cleanup_old_messages(self):
-        if len(self.messages) > 20:
-            new_messages = []
-            if self.messages and self.messages[0]["role"] == "system":
-                new_messages.append(self.messages[0])
-            new_messages.extend(self.messages[-10:])
-            self.messages = new_messages
-            self.console.print("[dim]Part of the conversation history was cleaned up to save memory.[/dim]")
+        if len(self.messages) <= 20:
+            return
+
+        new_messages = []
+        if self.messages and self.messages[0]["role"] == "system":
+            new_messages.append(self.messages[0])
+
+        recent = self.messages[-10:]
+
+        while recent and recent[0]["role"] == "tool":
+            idx = len(self.messages) - len(recent) - 1
+            if idx >= 0:
+                recent.insert(0, self.messages[idx])
+            else:
+                break
+
+        new_messages.extend(recent)
+        self.messages = new_messages
+        self.console.print("[dim]Part of the conversation history was cleaned up to save memory.[/dim]")
 
     def main(self):
         while True:
