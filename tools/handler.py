@@ -1,13 +1,15 @@
-from typing import Dict, Any
-from tools import web_search, open_url, run_python, manage_memories, manage_files
+from typing import Any
+
+from tools import manage_files, manage_memories, open_url, run_python, web_search
 from tools.config import (
-    MAX_TOTAL_TOOL_CALLS,
-    MAX_SEARCH_CALLS,
+    MAX_FORMATTED_RESULTS_LENGTH,
     MAX_OPEN_URL_CALLS,
-    MAX_SNIPPET_LENGTH,
+    MAX_SEARCH_CALLS,
     MAX_SEARCH_RESULTS_KEPT,
-    MAX_FORMATTED_RESULTS_LENGTH
+    MAX_SNIPPET_LENGTH,
+    MAX_TOTAL_TOOL_CALLS,
 )
+
 
 class ToolHandler:
     def __init__(self, app_instance):
@@ -30,7 +32,7 @@ class ToolHandler:
 
         self.searched_queries = set()
 
-    def execute(self, name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+    def execute(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
         if self.total_tool_calls >= self.max_total_tool_calls:
             return {
                 "error": "Maximum total tool calls reached. Please answer using the information already available."
@@ -48,11 +50,11 @@ class ToolHandler:
             return handler(args)
         except Exception as e:
             return {
-                "error": f"Tool execution failed: {str(e)}",
+                "error": f"Tool execution failed: {e!s}",
                 "type": type(e).__name__
             }
 
-    def handle_web_search(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_web_search(self, args: dict[str, Any]) -> dict[str, Any]:
         query = args.get("query", "").strip()
         
         if not query:
@@ -104,7 +106,7 @@ class ToolHandler:
             "total": len(compressed_results)
         }
 
-    def handle_open_url_by_index(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_open_url_by_index(self, args: dict[str, Any]) -> dict[str, Any]:
         index = args.get("index")
 
         try:
@@ -150,7 +152,7 @@ class ToolHandler:
         
         return result
 
-    def handle_run_python(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_run_python(self, args: dict[str, Any]) -> dict[str, Any]:
         code = args.get("code", "")
         timeout = args.get("timeout", 10)
         
@@ -163,7 +165,7 @@ class ToolHandler:
             console=self.app.console
         )
 
-    def handle_manage_memories(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_manage_memories(self, args: dict[str, Any]) -> dict[str, Any]:
         operation = args.get("operation", "")
         limit = args.get("limit", 20)
         
@@ -180,7 +182,7 @@ class ToolHandler:
         
         return result
 
-    def handle_manage_files(self, args: Dict[str, Any]) -> Dict[str, Any]:
+    def handle_manage_files(self, args: dict[str, Any]) -> dict[str, Any]:
         operation = args.get("operation", "")
         limit = args.get("limit", 20)
 
@@ -228,7 +230,7 @@ class ToolHandler:
         if len(results) > MAX_SEARCH_RESULTS_KEPT:
             formatted += f"\n*({len(results) - MAX_SEARCH_RESULTS_KEPT} more results are available via index lookup.)*\n"
         
-        formatted += f"\n**Use open_url_by_index(index) to retrieve full content.**\n"
+        formatted += "\n**Use open_url_by_index(index) to retrieve full content.**\n"
         formatted += f"**Valid index range: 1-{len(results)}**"
         
         if len(formatted) > MAX_FORMATTED_RESULTS_LENGTH:

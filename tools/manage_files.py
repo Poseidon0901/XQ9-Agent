@@ -1,12 +1,11 @@
-import os
 import shutil
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
+
 from rich.console import Console
 
-from .config import MAX_FILE_LIMIT, FILE_ROOT_DIR
+from .config import FILE_ROOT_DIR, MAX_FILE_LIMIT
 
 
 class FileManager:
@@ -27,7 +26,7 @@ class FileManager:
 
         return p.resolve()
 
-    def create_file(self, content: str, file_path: Optional[str] = None) -> Dict[str, Any]:
+    def create_file(self, content: str, file_path: str | None = None) -> dict[str, Any]:
         if content is None:
             return {"success": False, "error": "Content is required for create"}
 
@@ -62,7 +61,7 @@ class FileManager:
         except Exception as e:
             return {"success": False, "error": f"Failed to create file: {e}"}
 
-    def read_file(self, file_path: str) -> Dict[str, Any]:
+    def read_file(self, file_path: str) -> dict[str, Any]:
         try:
             target = self._resolve(file_path)
         except ValueError as e:
@@ -91,7 +90,7 @@ class FileManager:
         except Exception as e:
             return {"success": False, "error": f"Failed to read file: {e}"}
 
-    def update_file(self, file_path: str, content: str) -> Dict[str, Any]:
+    def update_file(self, file_path: str, content: str) -> dict[str, Any]:
         if content is None:
             return {"success": False, "error": "Content is required for update"}
 
@@ -122,7 +121,7 @@ class FileManager:
         except Exception as e:
             return {"success": False, "error": f"Failed to update file: {e}"}
 
-    def delete_file(self, file_path: str) -> Dict[str, Any]:
+    def delete_file(self, file_path: str) -> dict[str, Any]:
         try:
             target = self._resolve(file_path)
         except ValueError as e:
@@ -144,7 +143,7 @@ class FileManager:
         except Exception as e:
             return {"success": False, "error": f"Failed to delete: {e}"}
 
-    def list_files(self, directory: Optional[str] = None, limit: int = 20) -> Dict[str, Any]:
+    def list_files(self, directory: str | None = None, limit: int = 20) -> dict[str, Any]:
         limit = max(1, min(int(limit), MAX_FILE_LIMIT))
 
         if directory is None or str(directory).strip() == "":
@@ -185,7 +184,7 @@ class FileManager:
             "total_shown": len(entries),
         }
 
-    def clear_all(self, directory: Optional[str] = None) -> Dict[str, Any]:
+    def clear_all(self, directory: str | None = None) -> dict[str, Any]:
         if directory is None or str(directory).strip() == "":
             return {
                 "success": False,
@@ -224,7 +223,7 @@ class FileManager:
         }
 
 
-_file_manager: Optional[FileManager] = None
+_file_manager: FileManager | None = None
 
 
 def get_file_manager() -> FileManager:
@@ -236,14 +235,14 @@ def get_file_manager() -> FileManager:
 
 def manage_files(
     operation: str,
-    file_path: Optional[str] = None,
-    content: Optional[str] = None,
-    date: Optional[str] = None,
-    time: Optional[str] = None,
-    keyword: Optional[str] = None,
-    console: Optional[Console] = None,
+    file_path: str | None = None,
+    content: str | None = None,
+    date: str | None = None,
+    time: str | None = None,
+    keyword: str | None = None,
+    console: Console | None = None,
     limit: int = 20,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     manager = get_file_manager()
     operation = operation.lower().strip()
 

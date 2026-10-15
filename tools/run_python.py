@@ -1,6 +1,7 @@
-from rich.console import Console
 import subprocess
 import sys
+
+from rich.console import Console
 
 MAX_TIMEOUT = 300
 
@@ -12,7 +13,8 @@ def run_python(code: str, timeout: int = 10,console: Console = None):
         capture_output=True,
         text=True,
         timeout=timeout,
-        encoding="utf-8"
+        encoding="utf-8",
+        check=False,
     )
 
     console.print(f"[yellow]Running python code: {code}[/yellow]")

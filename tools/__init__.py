@@ -1,8 +1,8 @@
+from .manage_files import get_file_manager, manage_files
+from .manage_memories import get_memory_manager, manage_memories
 from .open_url import open_url
-from .web_search import web_search
 from .run_python import run_python
-from .manage_memories import manage_memories, get_memory_manager
-from .manage_files import manage_files, get_file_manager
+from .web_search import web_search
 
 TOOLS = [
     {

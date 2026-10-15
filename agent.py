@@ -1,22 +1,22 @@
+import glob
+import io
+import json
+import os
+import re
+import sys
+from datetime import datetime
+from enum import Enum, auto
+from pathlib import Path
+
+from dotenv import load_dotenv
 from openai import OpenAI
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
-import json
-from datetime import datetime
-import os
-from pathlib import Path
-from tools import TOOLS
-from tools.manage_memories import get_memory_manager
-from tools.handler import ToolHandler
-import glob
-from enum import Enum, auto
-import sys
-import re
-import io
-from dotenv import load_dotenv
 
-from tools.config import MAX_TOTAL_TOOL_CALLS
+from tools import TOOLS
+from tools.handler import ToolHandler
+from tools.manage_memories import get_memory_manager
 
 if sys.platform == "win32":
     try:
@@ -47,7 +47,7 @@ class CommandResult(Enum):
     CONTINUE = auto()
     PROCESS = auto()
 
-class App():
+class App:
     def __init__(self):
         self.console = Console()
 
@@ -365,7 +365,7 @@ class App():
                     except KeyboardInterrupt:
                         try:
                             stream.response.close()
-                        except:
+                        except Exception:
                             pass
 
                         self.client.close()
@@ -416,7 +416,7 @@ class App():
                             result = self.tool_handler.execute(function_name, arguments)
                         except json.JSONDecodeError as e:
                             result = {
-                                "error": f"Failed to parse tool arguments: {str(e)}",
+                                "error": f"Failed to parse tool arguments: {e!s}",
                                 "type": "JSONDecodeError"
                             }
                         except Exception as e:
@@ -435,7 +435,7 @@ class App():
                 self.console.print("\n[yellow]Bye![/yellow]")
                 break
             except Exception as e:
-                self.console.print(f"[red]Error:[/red] {str(e)}")
+                self.console.print(f"[red]Error:[/red] {e!s}")
 
 
 if __name__ == "__main__":
