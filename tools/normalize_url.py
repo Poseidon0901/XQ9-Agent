@@ -1,5 +1,6 @@
 from urllib.parse import urlparse, urlunparse
 
+
 def normalize_url(url: str) -> str:
     try:
         parsed = urlparse(url)

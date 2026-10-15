@@ -1,15 +1,17 @@
-from urllib.parse import quote
-from .get_domain import get_domain
-from ddgs import DDGS
-from curl_cffi import requests
 import json
-from bs4 import BeautifulSoup
-from rich.console import Console
-import time
 import re
+import time
 from datetime import datetime
-from .normalize_url import normalize_url
 from pathlib import Path
+from urllib.parse import quote
+
+from bs4 import BeautifulSoup
+from curl_cffi import requests
+from ddgs import DDGS
+from rich.console import Console
+
+from .get_domain import get_domain
+from .normalize_url import normalize_url
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",
@@ -116,7 +118,7 @@ def _search_duckduckgo_html(query: str, console: Console):
                     "url": item.get("href", "")
                 })
     except Exception as e:
-        raise ValueError(f"DuckDuckGo search failed: {str(e)}")
+        raise ValueError(f"DuckDuckGo search failed: {e!s}")
 
     if not results:
         raise ValueError(f"No results returned from DuckDuckGo for query: {query}")
@@ -148,9 +150,9 @@ def _search_duckduckgo_api(query: str, console: Console):
         response.raise_for_status()
         data = response.json()
     except requests.exceptions.RequestException as e:
-        raise ValueError(f"DuckDuckGo API request failed: {str(e)}")
+        raise ValueError(f"DuckDuckGo API request failed: {e!s}")
     except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON response from DuckDuckGo API: {str(e)}")
+        raise ValueError(f"Invalid JSON response from DuckDuckGo API: {e!s}")
 
     if not data:
         raise ValueError("Empty API response")
@@ -332,14 +334,14 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
             raise ValueError("No valid Wikipedia results found")
             
     except requests.exceptions.RequestException as e:
-        console.print(f"[dim]Wikipedia API request failed: {str(e)}[/dim]")
-        raise ValueError(f"Wikipedia API error: {str(e)}")
+        console.print(f"[dim]Wikipedia API request failed: {e!s}[/dim]")
+        raise ValueError(f"Wikipedia API error: {e!s}")
     except json.JSONDecodeError as e:
-        console.print(f"[dim]Wikipedia API JSON decode error: {str(e)}[/dim]")
-        raise ValueError(f"Wikipedia API parse error: {str(e)}")
+        console.print(f"[dim]Wikipedia API JSON decode error: {e!s}[/dim]")
+        raise ValueError(f"Wikipedia API parse error: {e!s}")
     except Exception as e:
-        console.print(f"[dim]Wikipedia API error: {str(e)}[/dim]")
-        raise ValueError(f"Wikipedia API error: {str(e)}")
+        console.print(f"[dim]Wikipedia API error: {e!s}[/dim]")
+        raise ValueError(f"Wikipedia API error: {e!s}")
 
 def web_search(query: str, console: Console, launch_timestamp: str):
     console.print(f"[yellow]Searching the internet for:[/yellow] {query}")
@@ -382,7 +384,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
                 console.print(f"[dim]{method.__name__} returned no results[/dim]")
         except Exception as e:
             last_error = str(e)
-            console.print(f"[dim]✗ {method.__name__} failed:[/dim] {str(e)}")
+            console.print(f"[dim]✗ {method.__name__} failed:[/dim] {e!s}")
             continue
 
     if not results:

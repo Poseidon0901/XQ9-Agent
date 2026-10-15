@@ -1,11 +1,13 @@
-from rich.console import Console
-import urllib
-from .get_domain import get_domain
-import re
-from curl_cffi import requests
-from bs4 import BeautifulSoup
-from datetime import datetime
 import json
+import re
+import urllib
+from datetime import datetime
+
+from bs4 import BeautifulSoup
+from curl_cffi import requests
+from rich.console import Console
+
+from .get_domain import get_domain
 
 TRUSTED_DOMAINS = {
     "github.com",
@@ -142,7 +144,7 @@ def detect_html_redirect(html: str, base_url: str) -> str | None:
 
     meta_refresh = soup.find(
         "meta",
-        attrs={"http-equiv": re.compile(r"refresh", re.I)}
+        attrs={"http-equiv": re.compile(r"refresh", re.IGNORECASE)}
     )
 
     if meta_refresh:
@@ -150,7 +152,7 @@ def detect_html_redirect(html: str, base_url: str) -> str | None:
         match = re.search(
             r'url\s*=\s*[\'"]?([^\'";]+)',
             content,
-            re.I
+            re.IGNORECASE
         )
 
         if match:
@@ -158,7 +160,7 @@ def detect_html_redirect(html: str, base_url: str) -> str | None:
             return urllib.parse.urljoin(base_url, target)
 
     for pattern in JS_REDIRECT_PATTERNS:
-        match = re.search(pattern, html, re.I)
+        match = re.search(pattern, html, re.IGNORECASE)
 
         if match:
             target = match.group(1).strip()
@@ -599,7 +601,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         return result
         
     except Exception as e:
-        console.print(f"[red]Open URL failed:[/red] {str(e)}")
+        console.print(f"[red]Open URL failed:[/red] {e!s}")
         result = {
             "url": original_url,
             "error": str(e),

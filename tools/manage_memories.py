@@ -1,9 +1,12 @@
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Any
+
 from rich.console import Console
-from .config import MEMORY_DB_PATH, MAX_MEMORY_LIMIT
+
+from .config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH
+
 
 class MemoryManager:
     def __init__(self, db_path: str = MEMORY_DB_PATH):
@@ -36,8 +39,8 @@ class MemoryManager:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             conn.commit()
     
-    def create_memory(self, content: str, date: Optional[str] = None, 
-                      time: Optional[str] = None) -> Dict[str, Any]:
+    def create_memory(self, content: str, date: str | None = None, 
+                      time: str | None = None) -> dict[str, Any]:
         if not content or not content.strip():
             return {"success": False, "error": "Content cannot be empty"}
 
@@ -71,9 +74,9 @@ class MemoryManager:
                 "memory": memory
             }
     
-    def read_memories(self, memory_id: Optional[int] = None, 
-                      date: Optional[str] = None,
-                      keyword: Optional[str] = None) -> Dict[str, Any]:
+    def read_memories(self, memory_id: int | None = None, 
+                      date: str | None = None,
+                      keyword: str | None = None) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             query = "SELECT * FROM memories WHERE 1=1"
@@ -107,7 +110,7 @@ class MemoryManager:
                 "memories": memories
             }
     
-    def update_memory(self, memory_id: int, content: str) -> Dict[str, Any]:
+    def update_memory(self, memory_id: int, content: str) -> dict[str, Any]:
         if not content or not content.strip():
             return {"success": False, "error": "Content cannot be empty"}
         
@@ -135,7 +138,7 @@ class MemoryManager:
                 "memory": memory
             }
     
-    def delete_memory(self, memory_id: int) -> Dict[str, Any]:
+    def delete_memory(self, memory_id: int) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
@@ -156,7 +159,7 @@ class MemoryManager:
                 "memory": dict(deleted_memory)
             }
     
-    def clear_all_memories(self) -> Dict[str, Any]:
+    def clear_all_memories(self) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT COUNT(*) as total FROM memories')
@@ -171,7 +174,7 @@ class MemoryManager:
                 "deleted_count": count
             }
     
-    def list_memories(self, limit: int = 20) -> Dict[str, Any]:
+    def list_memories(self, limit: int = 20) -> dict[str, Any]:
         limit = max(1, min(limit, MAX_MEMORY_LIMIT))
         
         with self._get_connection() as conn:
@@ -205,7 +208,7 @@ class MemoryManager:
                 "total": total
             }
     
-    def get_memory_by_id(self, memory_id: int) -> Optional[Dict[str, Any]]:
+    def get_memory_by_id(self, memory_id: int) -> dict[str, Any] | None:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
@@ -222,14 +225,14 @@ def get_memory_manager() -> MemoryManager:
 
 def manage_memories(
         operation: str,
-        content: Optional[str] = None,
-        memory_id: Optional[int] = None,
-        date: Optional[str] = None,
-        time: Optional[str] = None,
-        keyword: Optional[str] = None,
-        console: Optional[Console] = None,
+        content: str | None = None,
+        memory_id: int | None = None,
+        date: str | None = None,
+        time: str | None = None,
+        keyword: str | None = None,
+        console: Console | None = None,
         limit: int = 20
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
     manager = get_memory_manager()
     
     operation = operation.lower().strip()
@@ -377,8 +380,8 @@ def manage_memories(
     
     except Exception as e:
         if console:
-            console.print(f"[red]✗ Memory operation failed:[/red] {str(e)}")
+            console.print(f"[red]✗ Memory operation failed:[/red] {e!s}")
         return {
             "success": False,
-            "error": f"Memory operation failed: {str(e)}"
+            "error": f"Memory operation failed: {e!s}"
         }
