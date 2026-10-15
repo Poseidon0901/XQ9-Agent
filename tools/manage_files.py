@@ -21,10 +21,7 @@ class FileManager:
         if p.is_absolute():
             return p.resolve()
 
-        if p.parent == Path('.'):
-            return (self.root_dir / p).resolve()
-
-        return p.resolve()
+        return (self.root_dir / p).resolve()
 
     def create_file(self, content: str, file_path: str | None = None) -> dict[str, Any]:
         if content is None:

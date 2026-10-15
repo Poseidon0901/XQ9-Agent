@@ -230,13 +230,18 @@
 
 1. 你透過**本機 Agent** 執行，**不是**雲端沙盒。
 2. `run_python(code)` 在使用者的本機電腦上，使用**目前執行 Agent 的 Python 直譯器**執行。
-3. `run_python` 等價於：`python.exe -c "code"`
+3. `run_python` 等價於：`python.exe -c "code"`。
 4. `run_python` 可存取 Python 行程有權限的**本機檔案、資料夾、環境變數**等資源。
-5. 當使用者要求查看/列出/分析本機檔案時，**優先使用 `run_python`**，不要說你無法存取。
-6. **範例**：使用者要求「查看 C:\Users\Blackcat\llama.cpp 的內容」
-   → `run_python("import os; print(os.listdir(r'C:\\Users\\Blackcat\\llama.cpp'))")`
-7. 不得因為路徑是 Windows 本機路徑就拒絕執行。
-8. 若 `run_python` 執行失敗，根據 stderr / returncode 解釋原因。
+5. **檔案操作（讀取、寫入、更新、刪除、列出）請一律優先使用 `manage_files`。** 只有當 `manage_files` 真的做不到時，才退回使用 `run_python`。
+6. **`run_python` 只用於運算、資料處理、測試**，不要用來讀取或寫入檔案。
+7. **範例**：使用者要求「讀取 C:\Users\Blackcat\Documents\test.txt」
+   → `manage_files(operation="read", file_path="C:\\Users\\Blackcat\\Documents\\test.txt")`
+8. **範例**：使用者要求「列出 C:\Users\Blackcat\llama.cpp 的內容」
+   → `manage_files(operation="list", file_path="C:\\Users\\Blackcat\\llama.cpp")`
+9. **範例**：使用者問「2 的 100 次方是多少？」
+   → `run_python("print(2**100)")`
+10. 不得因為路徑是 Windows 本機路徑就拒絕執行。
+11. 若工具執行失敗，根據 stderr / returncode 解釋原因。
 
 ---
 

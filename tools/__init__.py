@@ -4,6 +4,16 @@ from .open_url import open_url
 from .run_python import run_python
 from .web_search import web_search
 
+__all__ = [
+    "get_file_manager",
+    "get_memory_manager",
+    "manage_files",
+    "manage_memories",
+    "open_url",
+    "run_python",
+    "web_search",
+]
+
 TOOLS = [
     {
         "type": "function",
@@ -43,7 +53,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "run_python",
-            "description": "Execute Python code locally. Choose an appropriate timeout.",
+            "description": "Execute Python code locally for computation, data processing, or testing. Do NOT use this to read or write files - use manage_files instead. Choose an appropriate timeout.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -124,7 +134,12 @@ Always query first before creating/updating to avoid duplicates.""",
             "name": "manage_files",
             "description": """Manage persistent files stored in the local filesystem.
 
-By default, files are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`. If `file_path` is a bare filename (e.g., "notes.txt"), it will be placed in `agent_workspace/`. If it contains directory components (e.g., "subdir/notes.txt" or an absolute path), that location will be used.
+**ALWAYS use this tool for ANY file operation (read, write, update, delete, list). Do NOT use run_python for file operations.**
+
+By default, files are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`:
+- Bare filename (e.g., "notes.txt") → placed in `agent_workspace/`
+- Path with directory components (e.g., "subdir/notes.txt") → placed in `agent_workspace/subdir/`
+- Absolute path (e.g., "C:\\Users\\Blackcat\\Documents\\test.txt") → used as-is
 
 Operations:
 - create: Create a new file. Requires content. Optional file_path (default: untitled_<timestamp>.txt in agent_workspace).
@@ -133,6 +148,12 @@ Operations:
 - delete: Remove a file. Requires file_path.
 - list: Show all files in the specified directory. Optional file_path (default: agent_workspace). Optional limit (default 20, max 200).
 - clear_all: Delete ALL files in the specified directory. Requires file_path (must not be the root agent_workspace).
+
+Examples:
+- Read a file in workspace: manage_files(operation="read", file_path="test.txt")
+- Read a file outside workspace: manage_files(operation="read", file_path="C:\\\\Users\\\\Blackcat\\\\Documents\\\\test.txt")
+- List workspace: manage_files(operation="list") (no file_path needed)
+- List a specific directory: manage_files(operation="list", file_path="C:\\\\Users\\\\Blackcat\\\\Documents")
 """,
             "parameters": {
                 "type": "object",
@@ -144,7 +165,7 @@ Operations:
                     },
                     "file_path": {
                         "type": "string",
-                        "description": "Path to the file or directory. If not provided, defaults to agent_workspace for create and list. For read/update/delete, this is required."
+                        "description": "Path to the file or directory. If not provided, defaults to agent_workspace for create and list. For read/update/delete, this is required. Absolute paths (e.g., 'C:\\\\Users\\\\Blackcat\\\\Documents\\\\test.txt') are supported."
                     },
                     "content": {
                         "type": "string",
