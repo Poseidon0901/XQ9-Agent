@@ -12,7 +12,7 @@ class MemoryManager:
     def __init__(self, db_path: str = MEMORY_DB_PATH):
         self.db_path = db_path
         self._init_database()
-    
+
     @contextmanager
     def _get_connection(self):
         conn = sqlite3.connect(self.db_path)
@@ -21,7 +21,7 @@ class MemoryManager:
             yield conn
         finally:
             conn.close()
-    
+
     def _init_database(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -38,8 +38,8 @@ class MemoryManager:
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_date ON memories(date)')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
             conn.commit()
-    
-    def create_memory(self, content: str, date: str | None = None, 
+
+    def create_memory(self, content: str, date: str | None = None,
                       time: str | None = None) -> dict[str, Any]:
         if not content or not content.strip():
             return {"success": False, "error": "Content cannot be empty"}
@@ -54,7 +54,7 @@ class MemoryManager:
             datetime.strptime(time, "%H:%M")
         except ValueError as e:
             return {"success": False, "error": str(e)}
-        
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
@@ -63,29 +63,29 @@ class MemoryManager:
                 VALUES (?, ?, ?, ?, ?)
             ''', (date, time, content.strip(), now, now))
             conn.commit()
-            
+
             memory_id = cursor.lastrowid
             cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
             memory = dict(cursor.fetchone())
-            
+
             return {
                 "success": True,
                 "message": f"Memory created successfully (ID: {memory_id})",
                 "memory": memory
             }
-    
-    def read_memories(self, memory_id: int | None = None, 
+
+    def read_memories(self, memory_id: int | None = None,
                       date: str | None = None,
                       keyword: str | None = None) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             query = "SELECT * FROM memories WHERE 1=1"
             params = []
-            
+
             if memory_id is not None:
                 query += " AND id = ?"
                 params.append(memory_id)
-            
+
             if date:
                 try:
                     datetime.strptime(date, "%Y-%m-%d")
@@ -96,100 +96,100 @@ class MemoryManager:
                     }
                 query += " AND date = ?"
                 params.append(date)
-            
+
             if keyword and keyword.strip():
                 query += " AND content LIKE ?"
                 params.append(f"%{keyword.strip()}%")
-            
+
             cursor.execute(query, params)
             memories = [dict(row) for row in cursor.fetchall()]
-            
+
             return {
                 "success": True,
                 "message": f"Found {len(memories)} memory(ies)",
                 "memories": memories
             }
-    
+
     def update_memory(self, memory_id: int, content: str) -> dict[str, Any]:
         if not content or not content.strip():
             return {"success": False, "error": "Content cannot be empty"}
-        
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('''
-                UPDATE memories 
+                UPDATE memories
                 SET content = ?, updated_at = ?
                 WHERE id = ?
             ''', (content.strip(), datetime.now().isoformat(), memory_id))
             conn.commit()
-            
+
             if cursor.rowcount == 0:
                 return {
                     "success": False,
                     "error": f"Memory with ID {memory_id} not found"
                 }
-            
+
             cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
             memory = dict(cursor.fetchone())
-            
+
             return {
                 "success": True,
                 "message": f"Memory {memory_id} updated successfully",
                 "memory": memory
             }
-    
+
     def delete_memory(self, memory_id: int) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
             deleted_memory = cursor.fetchone()
-            
+
             if not deleted_memory:
                 return {
                     "success": False,
                     "error": f"Memory with ID {memory_id} not found"
                 }
-            
+
             cursor.execute('DELETE FROM memories WHERE id = ?', (memory_id,))
             conn.commit()
-            
+
             return {
                 "success": True,
                 "message": f"Memory {memory_id} deleted successfully",
                 "memory": dict(deleted_memory)
             }
-    
+
     def clear_all_memories(self) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute('SELECT COUNT(*) as total FROM memories')
             count = cursor.fetchone()['total']
-            
+
             cursor.execute('DELETE FROM memories')
             conn.commit()
-            
+
             return {
                 "success": True,
                 "message": f"All memories cleared successfully ({count} memories)",
                 "deleted_count": count
             }
-    
+
     def list_memories(self, limit: int = 20) -> dict[str, Any]:
         limit = max(1, min(limit, MAX_MEMORY_LIMIT))
-        
+
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            
+
             cursor.execute('SELECT COUNT(*) as total FROM memories')
             total = cursor.fetchone()['total']
-            
+
             cursor.execute('''
                 SELECT id, date, time, content, created_at
                 FROM memories
                 ORDER BY created_at DESC
                 LIMIT ?
             ''', (limit,))
-            
+
             memories = []
             for row in cursor.fetchall():
                 content = row['content']
@@ -200,14 +200,14 @@ class MemoryManager:
                     "content_preview": content[:50] + ("..." if len(content) > 50 else ""),
                     "created_at": row['created_at']
                 })
-            
+
             return {
                 "success": True,
                 "message": f"Found {len(memories)} memories (total: {total})",
                 "memories": memories,
                 "total": total
             }
-    
+
     def get_memory_by_id(self, memory_id: int) -> dict[str, Any] | None:
         with self._get_connection() as conn:
             cursor = conn.cursor()
@@ -234,7 +234,7 @@ def manage_memories(
         limit: int = 20
     ) -> dict[str, Any]:
     manager = get_memory_manager()
-    
+
     operation = operation.lower().strip()
 
     if console:
@@ -261,7 +261,7 @@ def manage_memories(
 
     if console:
         console.print(f"[yellow]▶ Executing memory operation:[/yellow] {operation}")
-    
+
     try:
         if operation == "create":
             if console:
@@ -275,7 +275,7 @@ def manage_memories(
                 else:
                     console.print(f"[red]✗ {result.get('error')}[/red]")
             return result
-        
+
         elif operation == "read":
             if console:
                 filters = []
@@ -295,7 +295,7 @@ def manage_memories(
                 else:
                     console.print("[dim]No memories found[/dim]")
             return result
-        
+
         elif operation == "update":
             if console:
                 console.print(f"[dim]  Updating memory ID: {memory_id}[/dim]")
@@ -330,7 +330,7 @@ def manage_memories(
                 else:
                     console.print(f"[red]✗ {result.get('error')}[/red]")
             return result
-        
+
         elif operation == "delete":
             if console:
                 console.print(f"[dim]  Deleting memory ID: {memory_id}[/dim]")
@@ -346,7 +346,7 @@ def manage_memories(
                 else:
                     console.print(f"[red]✗ {result.get('error')}[/red]")
             return result
-        
+
         elif operation == "clear_all":
             if console:
                 console.print("[yellow]⚠️  Clearing ALL memories![/yellow]")
@@ -354,7 +354,7 @@ def manage_memories(
             if console:
                 console.print(f"[green]✓ {result.get('message')}[/green]")
             return result
-        
+
         elif operation == "list":
             if console:
                 console.print(f"[dim]  Limit: {limit} (showing most recent)[/dim]")
@@ -369,7 +369,7 @@ def manage_memories(
                 else:
                     console.print("[dim]No memories found[/dim]")
             return result
-        
+
         else:
             if console:
                 console.print(f"[red]✗ Unknown operation: {operation}[/red]")
@@ -377,7 +377,7 @@ def manage_memories(
                 "success": False,
                 "error": f"Unknown operation: {operation}. Supported: create, read, update, delete, list, clear_all"
             }
-    
+
     except Exception as e:
         if console:
             console.print(f"[red]✗ Memory operation failed:[/red] {e!s}")

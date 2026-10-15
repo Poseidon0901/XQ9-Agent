@@ -11,7 +11,7 @@ def normalize_url(url: str) -> str:
         if not parsed.scheme:
             url = "https://" + url
             parsed = urlparse(url)
-        
+
         return urlunparse((
             parsed.scheme,
             parsed.netloc.lower(),

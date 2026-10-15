@@ -78,14 +78,14 @@ class App:
     def init_log_files(self):
         self.log_dir = Path("logs")
         self.log_dir.mkdir(exist_ok=True)
-        
+
         self.web_search_log = self.log_dir / f"web_search_{self.launch_timestamp}.log"
         if not self.web_search_log.exists():
             self.web_search_log.write_text(
                 f"# Web Search Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
                 encoding="utf-8"
             )
-        
+
         self.open_url_log = self.log_dir / f"open_url_{self.launch_timestamp}.log"
         if not self.open_url_log.exists():
             self.open_url_log.write_text(
@@ -113,18 +113,18 @@ class App:
     def cmd_clearlogs(self):
         self.console.print("[yellow]Warning: Deleting all log file(s)! [/yellow]")
         confirm = self.console.input("[bold red]Are you sure？(y/N): [/bold red]")
-        
+
         if confirm.lower() != 'y':
             self.console.print("[dim]Cancelled[/dim]")
             return CommandResult.CONTINUE
 
         log_pattern = os.path.join("logs", "*.log")
         log_files = glob.glob(log_pattern)
-        
+
         if not log_files:
             self.console.print("[dim]No log file found. [/dim]")
             return CommandResult.CONTINUE
-        
+
         deleted_count = 0
         for log_file in log_files:
             try:
@@ -133,13 +133,13 @@ class App:
                 deleted_count += 1
             except Exception as e:
                 self.console.print(f"[red]Failed to delete {os.path.basename(log_file)}: {e}[/red]")
-        
+
         self.console.print(f"[green]Deleted {deleted_count} log file(s).[/green]")
 
         self.init_log_files()
         self.console.print("[dim]Successfully created new log files.[/dim]")
         return CommandResult.CONTINUE
-    
+
     def cmd_logs(self):
         log_files = glob.glob(os.path.join("logs", "*.log"))
         if not log_files:
@@ -256,7 +256,7 @@ class App:
 
                 if user_input.lower().startswith("/"):
                     result = self.command_handler(user_input)
-                    
+
                     if result == CommandResult.BREAK:
                         break
                     elif result == CommandResult.CONTINUE:
@@ -335,7 +335,7 @@ class App:
                             for chunk in stream:
                                 if not chunk.choices:
                                     continue
-                                
+
                                 delta = chunk.choices[0].delta
 
                                 reasoning = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
@@ -361,7 +361,7 @@ class App:
                                                 tool_calls_dict[index]["name"] = tc.function.name
                                             if tc.function.arguments:
                                                 tool_calls_dict[index]["arguments"] += tc.function.arguments
-                                                
+
                     except KeyboardInterrupt:
                         try:
                             stream.response.close()
@@ -372,9 +372,9 @@ class App:
 
                         self.client = OpenAI(
                             base_url=API_URL,
-                            api_key=API_KEY 
+                            api_key=API_KEY
                         )
-                        
+
                         self.console.print("\n[yellow]Generation interrupted.[/yellow]")
                         break
 
