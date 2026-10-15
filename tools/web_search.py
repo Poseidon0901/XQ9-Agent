@@ -23,20 +23,20 @@ SUSPICIOUS_KEYWORDS = {
     "coming soon",
 }
 
-def log_web_search(query: str, results: list, log_file_path: Path, method: str = None, error: str = None, raw_data: any = None):
+def log_web_search(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: any | None = None):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with open(log_file_path, "a", encoding="utf-8") as f:
         f.write(f"\n{'='*70}\n")
         f.write(f"[{timestamp}] SEARCH: {query}\n")
         f.write(f"{'='*70}\n")
-        
+
         if error:
             f.write(f"ERROR: {error}\n\n")
             return
-        
+
         f.write(f"Method: {method if method else 'Unknown'}\n")
         f.write(f"Total Results: {len(results) if results else 0}\n\n")
-        
+
         if raw_data:
             f.write("-" * 50 + "\n")
             f.write("RAW RESPONSE (first 2000 chars):\n")
@@ -46,7 +46,7 @@ def log_web_search(query: str, results: list, log_file_path: Path, method: str =
             if len(json.dumps(raw_data, ensure_ascii=False)) > 2000:
                 f.write("\n... [truncated]")
             f.write("\n" + "-" * 50 + "\n\n")
-        
+
         if results:
             for i, result in enumerate(results, 1):
                 f.write(f"Result {i}:\n")
@@ -56,7 +56,7 @@ def log_web_search(query: str, results: list, log_file_path: Path, method: str =
                 f.write("-" * 50 + "\n")
         else:
             f.write("No results found.\n")
-        
+
         f.write("\n")
 
 def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
@@ -76,7 +76,7 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
         "html.duckduckgo.com",
     }:
         return True
-    
+
     parking_domains = {
         "sedoparking.com",
         "parkingcrew.net",
@@ -99,7 +99,7 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
         "epik.com",
         "dynadot.com",
     }
-    
+
     if domain in parking_domains:
         return True
 
@@ -110,7 +110,7 @@ def _search_duckduckgo_html(query: str, console: Console):
     try:
         with DDGS() as ddgs:
             raw_results = ddgs.text(query, region="tw-tz", max_results=10)
-            
+
             for item in raw_results:
                 results.append({
                     "title": item.get("title", ""),
@@ -140,11 +140,11 @@ def _search_duckduckgo_api(query: str, console: Console):
         "skip_disambig": 1,
         "t": "llama_search"
     }
-    
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
     }
-    
+
     try:
         response = requests.get(api_url, params=params, headers=headers, timeout=10)
         response.raise_for_status()
@@ -158,7 +158,7 @@ def _search_duckduckgo_api(query: str, console: Console):
         raise ValueError("Empty API response")
 
     raw_data = data.copy()
-    
+
     if 'raw' in raw_data:
         del raw_data['raw']
 
@@ -179,64 +179,64 @@ def _search_duckduckgo_api(query: str, console: Console):
     for topic in data.get("RelatedTopics", []):
         if "Result" not in topic:
             continue
-            
+
         result_text = topic.get("Result", "")
         soup = BeautifulSoup(result_text, "html.parser")
-        
+
         link_elem = soup.find("a")
         if not link_elem:
             continue
-            
+
         url = link_elem.get("href", "")
         if not url or not url.startswith(("http://", "https://")):
             continue
-            
+
         title = link_elem.get_text(strip=True)
         if not title:
             title = "No title"
-            
+
         snippet = soup.get_text(separator=" ", strip=True)
         if snippet:
             snippet = snippet.replace(title, "", 1).strip()
-        
+
         url = normalize_url(url)
-        
+
         if url in seen_urls:
             continue
         seen_urls.add(url)
-        
+
         if is_suspicious_result(title, snippet or "", url):
             continue
-        
+
         results.append({
             "title": title,
             "snippet": snippet or "No description available",
             "url": url
         })
-        
+
         if len(results) >= 10:
             break
-    
+
     if not results:
         raise ValueError(f"No relevant results from DuckDuckGo API. Raw data keys: {list(data.keys())}")
-    
+
     return {
         "query": query,
         "results": results,
         "_raw_data": raw_data
     }
 
-def _search_wikipedia_api(query: str, console: Console, lang: str = None):
-    has_traditional = bool(re.search(r'[\u3400‑\u4dbf\uFA0E‑\uFA2F]', query))
-    
+def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
+    has_traditional = bool(re.search(r'[\u3400-\u4dbf\uFA0E-\uFA2F]', query))
+
     console.print(f"[dim]Wikipedia API search ({lang}):[/dim] {query}")
-    
+
     API_URL = f"https://{lang}.wikipedia.org/w/api.php"
-    
+
     headers = {
         "User-Agent": "llama-search/1.0 (https://github.com/Poseidon0901; xq9.0901@gmail.com)"
     }
-    
+
     try:
         search_params = {
             "action": "query",
@@ -245,11 +245,11 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
             "format": "json",
             "utf8": 1,
             "srlimit": 5,
-            **({"variant":"zh‑tw"} if has_traditional else {})
+            **({"variant":"zh-tw"} if has_traditional else {})
         }
-        
+
         response = None
-        for attempt in range(2):
+        for _attempt in range(2):
             response = requests.get(
                 API_URL,
                 params=search_params,
@@ -266,9 +266,9 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
 
         if "query" not in data or "search" not in data["query"]:
             raise ValueError("No search results from Wikipedia API")
-        
+
         search_results = data["query"]["search"]
-        
+
         if not search_results:
             raise ValueError("No Wikipedia articles found")
 
@@ -298,11 +298,11 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
 
         results = []
         seen_titles = set()
-        
+
         for item in search_results:
             title = item.get("title", "")
             pid = str(item.get("pageid"))
-            
+
             if title in seen_titles:
                 continue
             seen_titles.add(title)
@@ -311,7 +311,7 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
                 continue
 
             page_url = f"https://{lang}.wikipedia.org/wiki/{quote(title.replace(' ', '_'), safe='_()')}"
-            
+
             snippet = pages.get(pid, {}).get("extract", "").strip()
             if not snippet:
                 raw_snippet = item.get("snippet", "")
@@ -323,7 +323,7 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
                 "snippet": snippet or "Wikipedia article",
                 "url": page_url
             })
-        
+
         if results:
             console.print(f"[green]✓ Found {len(results)} Wikipedia articles[/green]")
             return {
@@ -332,7 +332,7 @@ def _search_wikipedia_api(query: str, console: Console, lang: str = None):
             }
         else:
             raise ValueError("No valid Wikipedia results found")
-            
+
     except requests.exceptions.RequestException as e:
         console.print(f"[dim]Wikipedia API request failed: {e!s}[/dim]")
         raise ValueError(f"Wikipedia API error: {e!s}")
@@ -347,7 +347,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
     console.print(f"[yellow]Searching the internet for:[/yellow] {query}")
 
     has_chinese = bool(re.search(r'[\u4e00-\u9fff]', query))
-    
+
     if has_chinese:
         search_methods = [
             _search_duckduckgo_html,
@@ -359,22 +359,22 @@ def web_search(query: str, console: Console, launch_timestamp: str):
             _search_wikipedia_api,
             _search_duckduckgo_api,
         ]
-    
+
     results = []
     last_error = None
     successful_method = None
     raw_data = None
 
     log_file_path = Path("logs") / f"web_search_{launch_timestamp}.log"
-    
+
     for method in search_methods:
         try:
             console.print(f"[dim]Trying {method.__name__}...[/dim]")
             result = method(query, console=console)
-            
+
             if result and "_raw_data" in result:
                 raw_data = result["_raw_data"]
-            
+
             if result and result.get("results") and len(result["results"]) > 0:
                 results = result["results"]
                 successful_method = method.__name__
@@ -404,25 +404,25 @@ def web_search(query: str, console: Console, launch_timestamp: str):
         if url in seen_urls:
             continue
         seen_urls.add(url)
-        
+
         if is_suspicious_result(r["title"], r["snippet"], url):
             console.print(f"[dim]Skipping suspicious:[/dim] {url}")
             continue
-        
+
         filtered_results.append({
             "title": r["title"],
             "snippet": r["snippet"][:500] if len(r["snippet"]) > 500 else r["snippet"],
             "url": url
         })
-        
+
         if len(filtered_results) >= 10:
             break
-    
+
     final_result = {
         "query": query,
         "results": filtered_results,
         "method": successful_method
     }
-    
+
     log_web_search(query=query, results=filtered_results, log_file_path=log_file_path, method=successful_method, raw_data=raw_data)
     return final_result

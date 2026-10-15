@@ -171,7 +171,7 @@ def detect_html_redirect(html: str, base_url: str) -> str | None:
 def is_trusted_domain(domain: str) -> bool:
     if not domain:
         return False
-    
+
     domain_lower = domain.lower()
 
     if domain_lower in TRUSTED_DOMAINS:
@@ -184,7 +184,7 @@ def is_trusted_domain(domain: str) -> bool:
     for tld in HIGH_TRUST_TLDS:
         if domain_lower.endswith(tld):
             return True
-    
+
     return False
 
 
@@ -192,8 +192,8 @@ def calculate_suspicious_score(
     title: str,
     snippet: str,
     url: str,
-    domain: str = None,
-    original_url: str = None,
+    domain: str | None = None,
+    original_url: str | None = None,
     domain_trusted: bool = False
 ) -> tuple:
 
@@ -346,23 +346,23 @@ def calculate_suspicious_score(
 def log_open_url(url: str, result: dict, launch_timestamp: str):
     log_file = f"logs/open_url_{launch_timestamp}.log"
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    
+
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(f"\n{'='*70}\n")
         f.write(f"[{timestamp}] OPEN URL: {url}\n")
         f.write(f"{'='*70}\n")
-        
+
         f.write(f"Status: {result.get('status', 'unknown')}\n")
         if 'final_url' in result and result['final_url'] != url:
             f.write(f"Final URL: {result['final_url']}\n")
-        
+
         if 'suspicious_score' in result:
             f.write(f"Suspicious Score: {result['suspicious_score']}\n")
-        
+
         if result.get('error'):
             f.write(f"ERROR: {result['error']}\n\n")
             return
-        
+
         content = result.get('content', '')
         if content:
             f.write(f"Content Length: {len(content)} characters\n")
@@ -373,66 +373,66 @@ def log_open_url(url: str, result: dict, launch_timestamp: str):
             f.write("\n" + "-"*50 + "\n")
         else:
             f.write("No content retrieved.\n")
-        
+
         f.write("\n")
 
 
 def extract_text_from_html(html_content: str, url: str = ""):
     soup = BeautifulSoup(html_content, "html.parser")
-    
+
     for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
         element.decompose()
-    
+
     text = soup.get_text(separator="\n", strip=True)
-    
+
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     text = "\n".join(lines)
 
     if len(text) > 4000:
         text = text[:4000] + "...\n[Content truncated]"
-    
+
     return text
 
 
 def open_url(url: str, console: Console, launch_timestamp: str):
     console.print(f"[yellow]Opening URL:[/yellow] {url}")
-    
+
     def fix_wikipedia_url(url: str) -> str:
         if 'zh.wikipedia.org' not in url and 'en.wikipedia.org' not in url:
             return url
-        
+
         try:
             parsed = urllib.parse.urlparse(url)
             path = parsed.path
-            
+
             match = re.search(r'^/wiki/(.+)$', path)
             if not match:
                 return url
-            
+
             title = match.group(1)
-            
+
             if re.match(r'^[A-Za-z0-9_%\-]+$', title):
                 return url
-            
+
             if any(ord(c) > 127 for c in title) or any(c in title for c in '【】（）（）『』「」'):
                 encoded_title = urllib.parse.quote(title, safe='_()')
                 fixed_url = f"{parsed.scheme}://{parsed.netloc}/wiki/{encoded_title}"
                 console.print(f"[dim]URL fixed:[/dim] {fixed_url}")
                 return fixed_url
-            
+
             return url
-            
+
         except Exception as e:
             console.print(f"[dim]URL fix error: {e}[/dim]")
             return url
-    
+
     original_url = url
     url = fix_wikipedia_url(url)
-    
+
     if url != original_url:
         console.print(f"[dim]Original: {original_url}[/dim]")
         console.print(f"[dim]Fixed: {url}[/dim]")
-    
+
     try:
         session = requests.Session(impersonate="chrome120")
         session.max_redirects = MAX_REDIRECTS
@@ -459,7 +459,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             }
             log_open_url(original_url, result, launch_timestamp=launch_timestamp)
             return result
-        
+
         final_url = response.url
 
         if final_url != url:
@@ -470,7 +470,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         if final_url != original_url:
             redirect_chain.append(final_url)
 
-        for redirect_count in range(MAX_REDIRECTS):
+        for _redirect_count in range(MAX_REDIRECTS):
             content_type = response.headers.get("content-type", "").lower()
 
             if "text/html" not in content_type:
@@ -526,7 +526,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         soup = BeautifulSoup(response.text, "html.parser")
         title = soup.title.string if soup.title else ""
         body_text = soup.get_text()
-        
+
         suspicious_score, score_details = calculate_suspicious_score(
             title=title or "",
             snippet=body_text[:5000],
@@ -535,13 +535,13 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             original_url=original_url,
             domain_trusted=final_domain_trusted
         )
-        
+
         console.print(f"[dim]Suspicious score: {suspicious_score}[/dim]")
         for detail in score_details:
             console.print(f"[dim]  {detail}[/dim]")
 
         suspicious_threshold = TRUSTED_SUSPICIOUS_THRESHOLD if final_domain_trusted else SUSPICIOUS_THRESHOLD
-        
+
         if suspicious_score >= suspicious_threshold :
             console.print(f"[red]Domain parking detected:[/red] Score {suspicious_score} >= {suspicious_threshold}")
             result = {
@@ -555,14 +555,14 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             }
             log_open_url(original_url, result, launch_timestamp=launch_timestamp)
             return result
-        
+
         if suspicious_score >= SAFE_THRESHOLD and not final_domain_trusted:
             console.print(f"[yellow]Page has some suspicious indicators:[/yellow] Score {suspicious_score}")
         else:
             console.print(f"[green]Page appears safe:[/green] Score {suspicious_score}")
 
         content_type = response.headers.get('content-type', '').lower()
-        
+
         if 'text/html' in content_type:
             text = extract_text_from_html(response.text, final_url)
         elif 'application/json' in content_type:
@@ -576,7 +576,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
 
         if len(text) > 5000:
             text = text[:5000] + "\n\n... [Content truncated]"
-        
+
         result = {
             "url": original_url,
             "final_url": final_url,
@@ -585,10 +585,10 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             "suspicious_score": suspicious_score,
             "score_details": score_details
         }
-        
+
         log_open_url(original_url, result, launch_timestamp=launch_timestamp)
         return result
-        
+
     except requests.exceptions.Timeout:
         console.print("[red]Timeout[/red]")
         result = {
@@ -599,7 +599,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         }
         log_open_url(original_url, result, launch_timestamp=launch_timestamp)
         return result
-        
+
     except Exception as e:
         console.print(f"[red]Open URL failed:[/red] {e!s}")
         result = {
