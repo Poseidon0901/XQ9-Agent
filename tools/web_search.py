@@ -9,6 +9,7 @@ from bs4 import BeautifulSoup
 from curl_cffi import requests
 from ddgs import DDGS
 from rich.console import Console
+from typing import Any
 
 from .get_domain import get_domain
 from .normalize_url import normalize_url
@@ -23,7 +24,7 @@ SUSPICIOUS_KEYWORDS = {
     "coming soon",
 }
 
-def log_web_search(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: any | None = None):
+def log_web_search(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: Any | None = None):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     with open(log_file_path, "a", encoding="utf-8") as f:
         f.write(f"\n{'='*70}\n")
