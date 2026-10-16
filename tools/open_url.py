@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 from curl_cffi import requests
 from rich.console import Console
 
-from .get_domain import get_domain
+from tools.common_funcs import get_domain
 
 TRUSTED_DOMAINS = {
     "github.com",

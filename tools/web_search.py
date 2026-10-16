@@ -11,8 +11,8 @@ from ddgs import DDGS
 from rich.console import Console
 from typing import Any
 
-from .get_domain import get_domain
-from .normalize_url import normalize_url
+from tools.common_funcs import get_domain
+from tools.common_funcs import normalize_url
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",
