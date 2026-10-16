@@ -19,7 +19,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "web_search",
-            "description": "Search the internet for current or unknown information. Returns a list of search results with titles, snippets, and URLs.",
+            "description": "Search the internet for current or unknown information. Returns a list of search results with titles, snippets, and URLs. Formulate the query to target the answer directly — do NOT search for intermediate information (like the date) unless the user asks for it.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -36,7 +36,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "open_url_by_index",
-            "description": "Open a search result by index. Use this to open any URL that is in the search results list. This includes URLs that the user directly provided (they are automatically added to the search results). NEVER use this unless the URL is in the search results list.",
+            "description": "Open a search result by index. Use this to open any URL that is in the search results list. This includes URLs that the user directly provided (they are automatically added to the search results). NEVER use this unless the URL is in the search results list. Prefer results whose titles match the user's question directly. For time-sensitive queries, prefer titles containing 'current', 'today', 'live', or 'now'.",
             "parameters": {
                 "type": "object",
                 "properties": {
