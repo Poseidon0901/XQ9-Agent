@@ -1,4 +1,3 @@
-import glob
 import io
 import json
 import os
@@ -14,11 +13,11 @@ from rich.live import Live
 from rich.markdown import Markdown
 
 from tools import TOOLS
+from tools.commands import CommandHandler
+from tools.common_funcs import has_chinese
 from tools.config import CommandResult
 from tools.handler import ToolHandler
 from tools.manage_memories import get_memory_manager
-from tools.commands import CommandHandler
-from tools.common_funcs import has_chinese
 
 if sys.platform == "win32":
     try:
@@ -99,7 +98,7 @@ class App:
                 url = 'https://' + url
             return url
         return None
-    
+
     def get_system_prompt(self, is_chinese_present: bool):
         if self.use_tools:
             return (

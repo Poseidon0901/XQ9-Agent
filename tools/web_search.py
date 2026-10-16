@@ -3,16 +3,15 @@ import re
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 from urllib.parse import quote
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 from ddgs import DDGS
 from rich.console import Console
-from typing import Any
 
-from tools.common_funcs import get_domain
-from tools.common_funcs import normalize_url
+from tools.common_funcs import get_domain, normalize_url
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",

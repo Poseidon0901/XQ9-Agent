@@ -1,6 +1,8 @@
-from tools.config import CommandResult
-import os
 import glob
+import os
+
+from tools.config import CommandResult
+
 
 class CommandHandler:
     def __init__(self, app_instance, user_input: str = ""):

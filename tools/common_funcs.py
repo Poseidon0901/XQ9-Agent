@@ -1,5 +1,6 @@
-from urllib.parse import urlparse, urlunparse
 import re
+from urllib.parse import urlparse, urlunparse
+
 
 def get_domain(url: str) -> str:
     try:
