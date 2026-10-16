@@ -5,7 +5,7 @@ from typing import Any
 
 from rich.console import Console
 
-from .config import FILE_ROOT_DIR, MAX_FILE_LIMIT
+from tools.config import FILE_ROOT_DIR, MAX_FILE_LIMIT
 
 
 class FileManager:

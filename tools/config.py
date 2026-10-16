@@ -1,3 +1,5 @@
+from enum import Enum, auto
+
 MAX_TOTAL_TOOL_CALLS = 30
 MAX_SEARCH_CALLS = 5
 MAX_OPEN_URL_CALLS = 10
@@ -12,3 +14,9 @@ MEMORY_DB_PATH = "memories.db"
 # 新增
 MAX_FILE_LIMIT = 200
 FILE_ROOT_DIR = "agent_workspace"
+
+
+class CommandResult(Enum):
+    BREAK = auto()
+    CONTINUE = auto()
+    PROCESS = auto()

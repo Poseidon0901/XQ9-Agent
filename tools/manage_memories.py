@@ -5,7 +5,7 @@ from typing import Any
 
 from rich.console import Console
 
-from .config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH
+from tools.config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH
 
 
 class MemoryManager:

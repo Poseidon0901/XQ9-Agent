@@ -5,7 +5,6 @@ import os
 import re
 import sys
 from datetime import datetime
-from enum import Enum, auto
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,8 +14,11 @@ from rich.live import Live
 from rich.markdown import Markdown
 
 from tools import TOOLS
+from tools.config import CommandResult
 from tools.handler import ToolHandler
 from tools.manage_memories import get_memory_manager
+from tools.commands import CommandHandler
+from tools.common_funcs import has_chinese
 
 if sys.platform == "win32":
     try:
@@ -41,12 +43,6 @@ if MODEL:
 if API_KEY:
     print(f"API_KEY = {f'{API_KEY[:10]}...' if len(API_KEY) > 10 else '***'}")
 
-
-class CommandResult(Enum):
-    BREAK = auto()
-    CONTINUE = auto()
-    PROCESS = auto()
-
 class App:
     def __init__(self):
         self.console = Console()
@@ -64,6 +60,7 @@ class App:
         self.use_tools = True
 
         self.tool_handler = ToolHandler(self)
+        self.command_handler = CommandHandler(self)
 
         self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")
         self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")
@@ -93,129 +90,6 @@ class App:
                 encoding="utf-8"
             )
 
-    @staticmethod
-    def _has_chinese(text:str)->bool:
-        if not text:
-            return False
-        return bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', text))
-
-    def cmd_exit(self):
-        return CommandResult.BREAK
-
-    def cmd_clear(self):
-        self.messages = []
-        self.last_search_results = []
-        self.last_search_query = ""
-        self.tool_handler.reset_counters()
-        self.console.print("[yellow]Conversation history cleared.[/yellow]")
-        return CommandResult.CONTINUE
-
-    def cmd_clearlogs(self):
-        self.console.print("[yellow]Warning: Deleting all log file(s)! [/yellow]")
-        confirm = self.console.input("[bold red]Are you sure？(y/N): [/bold red]")
-
-        if confirm.lower() != 'y':
-            self.console.print("[dim]Cancelled[/dim]")
-            return CommandResult.CONTINUE
-
-        log_pattern = os.path.join("logs", "*.log")
-        log_files = glob.glob(log_pattern)
-
-        if not log_files:
-            self.console.print("[dim]No log file found. [/dim]")
-            return CommandResult.CONTINUE
-
-        deleted_count = 0
-        for log_file in log_files:
-            try:
-                os.remove(log_file)
-                self.console.print(f"[dim]Deleted: {os.path.basename(log_file)}[/dim]")
-                deleted_count += 1
-            except Exception as e:
-                self.console.print(f"[red]Failed to delete {os.path.basename(log_file)}: {e}[/red]")
-
-        self.console.print(f"[green]Deleted {deleted_count} log file(s).[/green]")
-
-        self.init_log_files()
-        self.console.print("[dim]Successfully created new log files.[/dim]")
-        return CommandResult.CONTINUE
-
-    def cmd_logs(self):
-        log_files = glob.glob(os.path.join("logs", "*.log"))
-        if not log_files:
-            self.console.print("[dim]No log files found.[/dim]")
-        else:
-            self.console.print("[bold]Recent log files:[/bold]")
-            for f in sorted(log_files, reverse=True)[:10]:
-                size = os.path.getsize(f) // 1024
-                self.console.print(f"  {os.path.basename(f)} ({size} KB)")
-        return CommandResult.CONTINUE
-
-    def cmd_togglesystemprompt(self):
-        self.use_system_prompt = not self.use_system_prompt
-
-        if self.use_system_prompt:
-            if not self.messages or self.messages[0]["role"] != "system":
-                self.messages.insert(0, {
-                    "role": "system",
-                    "status": "waiting for new system prompt",
-                    "content": ""
-                })
-        else:
-            if self.messages and self.messages[0]["role"] == "system":
-                self.messages.pop(0)
-
-        status = "enabled" if self.use_system_prompt else "disabled"
-        self.console.print(f"[yellow]System prompt {status}.[/yellow]")
-        return CommandResult.CONTINUE
-
-    def get_system_prompt(self, has_chinese: bool):
-        if self.use_tools:
-            return (
-                self.system_message_zh_tw
-                if has_chinese
-                else self.system_message_en_us
-            )
-        else:
-            return (
-                self.system_message_zh_tw_no_tools
-                if has_chinese
-                else self.system_message_en_us_no_tools
-            )
-
-    def cmd_toggletools(self):
-        self.use_tools = not self.use_tools
-        status = "enabled" if self.use_tools else "disabled"
-
-        if self.use_system_prompt:
-            if self.messages and self.messages[0]["role"] == "system":
-                self.messages[0]["content"] = self.get_system_prompt(self._has_chinese(self.messages[0]["content"]))
-            else:
-                self.messages.insert(0, {
-                    "role": "system",
-                    "content": self.get_system_prompt(False)
-                })
-
-        self.console.print(f"[yellow]Tools {status}.[/yellow]")
-        return CommandResult.CONTINUE
-
-    def command_handler(self, command: str) -> CommandResult:
-        match command.lstrip('/').lower():
-            case "exit" | "quit":
-                return self.cmd_exit()
-            case "clear" | "erase":
-                return self.cmd_clear()
-            case "clearlogs" | "deletelogs":
-                return self.cmd_clearlogs()
-            case "logs" | "showlogs":
-                return self.cmd_logs()
-            case "togglesystemprompt":
-                return self.cmd_togglesystemprompt()
-            case "toggletools":
-                return self.cmd_toggletools()
-            case _:
-                return CommandResult.PROCESS
-
     def _extract_url_from_input(self, text: str) -> str | None:
         pattern = r'(?:https?://|www\.)[^\s\'"]+|[\w-]+\.(?:com|org|net|tw|jp|io|dev|ai|app)[^\s\'"]*'
         match = re.search(pattern, text, re.IGNORECASE)
@@ -225,6 +99,20 @@ class App:
                 url = 'https://' + url
             return url
         return None
+    
+    def get_system_prompt(self, is_chinese_present: bool):
+        if self.use_tools:
+            return (
+                self.system_message_zh_tw
+                if is_chinese_present
+                else self.system_message_en_us
+            )
+        else:
+            return (
+                self.system_message_zh_tw_no_tools
+                if is_chinese_present
+                else self.system_message_en_us_no_tools
+            )
 
     def _cleanup_old_messages(self):
         if len(self.messages) <= 20:
@@ -255,7 +143,7 @@ class App:
                 )
 
                 if user_input.lower().startswith("/"):
-                    result = self.command_handler(user_input)
+                    result = self.command_handler.execute(user_input)
 
                     if result == CommandResult.BREAK:
                         break
@@ -268,8 +156,8 @@ class App:
                     self.console.print(f"[dim]Detected URL: {extracted_url}[/dim]")
 
                 if self.use_system_prompt:
-                    has_chinese = self._has_chinese(user_input)
-                    system_prompt = self.get_system_prompt(has_chinese)
+                    is_chinese_present = has_chinese(user_input)
+                    system_prompt = self.get_system_prompt(is_chinese_present)
 
                     system_prompt_changed = False
 
@@ -290,7 +178,7 @@ class App:
                     if system_prompt_changed:
                         self.console.print(
                             "[yellow]Using zh_tw system prompt[/yellow]"
-                            if has_chinese
+                            if is_chinese_present
                             else "[yellow]Using en_us system prompt[/yellow]"
                         )
 

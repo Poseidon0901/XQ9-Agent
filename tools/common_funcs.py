@@ -1,5 +1,11 @@
 from urllib.parse import urlparse, urlunparse
+import re
 
+def get_domain(url: str) -> str:
+    try:
+        return urlparse(url).netloc.lower().removeprefix("www.")
+    except Exception:
+        return ""
 
 def normalize_url(url: str) -> str:
     try:
@@ -22,3 +28,8 @@ def normalize_url(url: str) -> str:
         ))
     except Exception:
         return url
+
+def has_chinese(text:str)->bool:
+    if not text:
+        return False
+    return bool(re.search(r'[\u4e00-\u9fff\u3100-\u312f]', text))
