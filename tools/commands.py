@@ -1,6 +1,7 @@
 import glob
 import os
 
+from tools.common_funcs import has_chinese
 from tools.config import CommandResult
 
 
@@ -84,7 +85,7 @@ class CommandHandler:
 
         if self.app_instance.use_system_prompt:
             if self.app_instance.messages and self.app_instance.messages[0]["role"] == "system":
-                self.app_instance.messages[0]["content"] = self.app_instance.get_system_prompt(self.app_instance._has_chinese(self.app_instance.messages[0]["content"]))
+                self.app_instance.messages[0]["content"] = self.app_instance.get_system_prompt(has_chinese(self.app_instance.messages[0]["content"]))
             else:
                 self.app_instance.messages.insert(0, {
                     "role": "system",
