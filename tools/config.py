@@ -20,3 +20,7 @@ class CommandResult(Enum):
     BREAK = auto()
     CONTINUE = auto()
     PROCESS = auto()
+
+class LogResult(Enum):
+    SUCCESS = auto()
+    FAILURE = auto()

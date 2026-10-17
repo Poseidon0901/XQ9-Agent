@@ -8,6 +8,7 @@ from curl_cffi import requests
 from rich.console import Console
 
 from tools.common_funcs import get_domain
+from tools.logs import get_log_manager
 
 TRUSTED_DOMAINS = {
     "github.com",
@@ -138,6 +139,10 @@ JS_REDIRECT_PATTERNS = [
     r'location\.replace\(\s*[\'"]([^\'"]+)[\'"]',
     r'location\.assign\(\s*[\'"]([^\'"]+)[\'"]',
 ]
+
+MODULE_NAME = "open_url"
+
+log_manager = get_log_manager()
 
 def detect_html_redirect(html: str, base_url: str) -> str | None:
     soup = BeautifulSoup(html, "html.parser")
@@ -343,41 +348,39 @@ def calculate_suspicious_score(
     return total_score, details
 
 
-def log_open_url(url: str, result: dict, launch_timestamp: str):
-    log_file = f"logs/open_url_{launch_timestamp}.log"
+def log(url: str, result: dict):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    with open(log_file, "a", encoding="utf-8") as f:
-        f.write(f"\n{'='*70}\n")
-        f.write(f"[{timestamp}] OPEN URL: {url}\n")
-        f.write(f"{'='*70}\n")
+    content = f"\n{'='*70}\n[{timestamp}] OPEN URL: {url}\n{'='*70}\n"
 
-        f.write(f"Status: {result.get('status', 'unknown')}\n")
-        if 'final_url' in result and result['final_url'] != url:
-            f.write(f"Final URL: {result['final_url']}\n")
+    content += f"Status: {result.get('status', 'unknown')}\n"
+    if 'final_url' in result and result['final_url'] != url:
+        content += f"Final URL: {result['final_url']}\n"
 
-        if 'suspicious_score' in result:
-            f.write(f"Suspicious Score: {result['suspicious_score']}\n")
+    if 'suspicious_score' in result:
+        content += f"Suspicious Score: {result['suspicious_score']}\n"
 
-        if result.get('error'):
-            f.write(f"ERROR: {result['error']}\n\n")
-            return
+    if result.get('error'):
+        content += f"ERROR: {result['error']}\n\n"
+        log_manager.write_log(MODULE_NAME, content)
+        return
 
-        content = result.get('content', '')
-        if content:
-            f.write(f"Content Length: {len(content)} characters\n")
-            f.write("\n" + "-"*50 + "\n")
-            f.write("CONTENT:\n")
-            f.write("-"*50 + "\n")
-            f.write(content)
-            f.write("\n" + "-"*50 + "\n")
-        else:
-            f.write("No content retrieved.\n")
+    content += result.get('content', '')
+    if content:
+        content += f"Content Length: {len(content)} characters\n"
+        content += "\n" + "-"*50 + "\n"
+        content += "CONTENT:\n"
+        content += "-"*50 + "\n"
+        content += content
+        content += "\n" + "-"*50 + "\n"
+    else:
+        content += "No content retrieved.\n"
 
-        f.write("\n")
+    content += "\n"
+    log_manager.write_log(MODULE_NAME, content)
 
 
-def extract_text_from_html(html_content: str, url: str = ""):
+def extract_text_from_html(html_content: str):
     soup = BeautifulSoup(html_content, "html.parser")
 
     for element in soup(["script", "style", "nav", "header", "footer", "aside"]):
@@ -394,7 +397,7 @@ def extract_text_from_html(html_content: str, url: str = ""):
     return text
 
 
-def open_url(url: str, console: Console, launch_timestamp: str):
+def open_url(url: str, console: Console):
     console.print(f"[yellow]Opening URL:[/yellow] {url}")
 
     def fix_wikipedia_url(url: str) -> str:
@@ -457,7 +460,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
                 "content": "",
                 "status": "error"
             }
-            log_open_url(original_url, result, launch_timestamp=launch_timestamp)
+            log(original_url, result)
             return result
 
         final_url = response.url
@@ -470,7 +473,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         if final_url != original_url:
             redirect_chain.append(final_url)
 
-        for _redirect_count in range(MAX_REDIRECTS):
+        for _ in range(MAX_REDIRECTS):
             content_type = response.headers.get("content-type", "").lower()
 
             if "text/html" not in content_type:
@@ -553,7 +556,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
                 "suspicious_score": suspicious_score,
                 "score_details": score_details
             }
-            log_open_url(original_url, result, launch_timestamp=launch_timestamp)
+            log(original_url, result)
             return result
 
         if suspicious_score >= SAFE_THRESHOLD and not final_domain_trusted:
@@ -564,7 +567,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
         content_type = response.headers.get('content-type', '').lower()
 
         if 'text/html' in content_type:
-            text = extract_text_from_html(response.text, final_url)
+            text = extract_text_from_html(response.text)
         elif 'application/json' in content_type:
             try:
                 data = response.json()
@@ -586,7 +589,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             "score_details": score_details
         }
 
-        log_open_url(original_url, result, launch_timestamp=launch_timestamp)
+        log(original_url, result)
         return result
 
     except requests.exceptions.Timeout:
@@ -597,7 +600,7 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             "content": "",
             "status": "timeout"
         }
-        log_open_url(original_url, result, launch_timestamp=launch_timestamp)
+        log(original_url, result)
         return result
 
     except Exception as e:
@@ -608,5 +611,5 @@ def open_url(url: str, console: Console, launch_timestamp: str):
             "content": "",
             "status": "error"
         }
-        log_open_url(original_url, result, launch_timestamp=launch_timestamp)
+        log(original_url, result)
         return result
