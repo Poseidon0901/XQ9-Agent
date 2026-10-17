@@ -6,7 +6,7 @@ from tools.config import CommandResult
 
 
 class CommandHandler:
-    def __init__(self, app_instance, user_input: str = ""):
+    def __init__(self, app_instance):
         self.app_instance = app_instance
 
     def cmd_exit(self):
