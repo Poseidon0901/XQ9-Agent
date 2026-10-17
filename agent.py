@@ -214,7 +214,10 @@ class App:
                                     live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
                                 if delta.content:
                                     full_content += delta.content
-                                    live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
+                                    if reasoning_content:
+                                        live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
+                                    else:
+                                        live.update(Markdown(full_content))
                                 if delta.tool_calls:
                                     for tc in delta.tool_calls:
                                         index = tc.index
