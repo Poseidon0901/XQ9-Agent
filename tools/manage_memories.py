@@ -25,7 +25,7 @@ class MemoryManager:
     def _init_database(self):
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS memories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     date TEXT NOT NULL,
@@ -34,13 +34,14 @@ class MemoryManager:
                     created_at TEXT NOT NULL,
                     updated_at TEXT NOT NULL
                 )
-            ''')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_date ON memories(date)')
-            cursor.execute('CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)')
+            """)
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_date ON memories(date)")
+            cursor.execute("CREATE INDEX IF NOT EXISTS idx_created_at ON memories(created_at)")
             conn.commit()
 
-    def create_memory(self, content: str, date: str | None = None,
-                      time: str | None = None) -> dict[str, Any]:
+    def create_memory(
+        self, content: str, date: str | None = None, time: str | None = None
+    ) -> dict[str, Any]:
         if not content or not content.strip():
             return {"success": False, "error": "Content cannot be empty"}
 
@@ -58,25 +59,28 @@ class MemoryManager:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             now = datetime.now().isoformat()
-            cursor.execute('''
+            cursor.execute(
+                """
                 INSERT INTO memories (date, time, content, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?)
-            ''', (date, time, content.strip(), now, now))
+            """,
+                (date, time, content.strip(), now, now),
+            )
             conn.commit()
 
             memory_id = cursor.lastrowid
-            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            cursor.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
             memory = dict(cursor.fetchone())
 
             return {
                 "success": True,
                 "message": f"Memory created successfully (ID: {memory_id})",
-                "memory": memory
+                "memory": memory,
             }
 
-    def read_memories(self, memory_id: int | None = None,
-                      date: str | None = None,
-                      keyword: str | None = None) -> dict[str, Any]:
+    def read_memories(
+        self, memory_id: int | None = None, date: str | None = None, keyword: str | None = None
+    ) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
             query = "SELECT * FROM memories WHERE 1=1"
@@ -92,7 +96,7 @@ class MemoryManager:
                 except ValueError:
                     return {
                         "success": False,
-                        "error": f"Invalid date format: '{date}'. Use YYYY-MM-DD"
+                        "error": f"Invalid date format: '{date}'. Use YYYY-MM-DD",
                     }
                 query += " AND date = ?"
                 params.append(date)
@@ -107,7 +111,7 @@ class MemoryManager:
             return {
                 "success": True,
                 "message": f"Found {len(memories)} memory(ies)",
-                "memories": memories
+                "memories": memories,
             }
 
     def update_memory(self, memory_id: int, content: str) -> dict[str, Any]:
@@ -116,62 +120,59 @@ class MemoryManager:
 
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute(
+                """
                 UPDATE memories
                 SET content = ?, updated_at = ?
                 WHERE id = ?
-            ''', (content.strip(), datetime.now().isoformat(), memory_id))
+            """,
+                (content.strip(), datetime.now().isoformat(), memory_id),
+            )
             conn.commit()
 
             if cursor.rowcount == 0:
-                return {
-                    "success": False,
-                    "error": f"Memory with ID {memory_id} not found"
-                }
+                return {"success": False, "error": f"Memory with ID {memory_id} not found"}
 
-            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            cursor.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
             memory = dict(cursor.fetchone())
 
             return {
                 "success": True,
                 "message": f"Memory {memory_id} updated successfully",
-                "memory": memory
+                "memory": memory,
             }
 
     def delete_memory(self, memory_id: int) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            cursor.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
             deleted_memory = cursor.fetchone()
 
             if not deleted_memory:
-                return {
-                    "success": False,
-                    "error": f"Memory with ID {memory_id} not found"
-                }
+                return {"success": False, "error": f"Memory with ID {memory_id} not found"}
 
-            cursor.execute('DELETE FROM memories WHERE id = ?', (memory_id,))
+            cursor.execute("DELETE FROM memories WHERE id = ?", (memory_id,))
             conn.commit()
 
             return {
                 "success": True,
                 "message": f"Memory {memory_id} deleted successfully",
-                "memory": dict(deleted_memory)
+                "memory": dict(deleted_memory),
             }
 
     def clear_all_memories(self) -> dict[str, Any]:
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) as total FROM memories')
-            count = cursor.fetchone()['total']
+            cursor.execute("SELECT COUNT(*) as total FROM memories")
+            count = cursor.fetchone()["total"]
 
-            cursor.execute('DELETE FROM memories')
+            cursor.execute("DELETE FROM memories")
             conn.commit()
 
             return {
                 "success": True,
                 "message": f"All memories cleared successfully ({count} memories)",
-                "deleted_count": count
+                "deleted_count": count,
             }
 
     def list_memories(self, limit: int = 20) -> dict[str, Any]:
@@ -180,42 +181,49 @@ class MemoryManager:
         with self._get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute('SELECT COUNT(*) as total FROM memories')
-            total = cursor.fetchone()['total']
+            cursor.execute("SELECT COUNT(*) as total FROM memories")
+            total = cursor.fetchone()["total"]
 
-            cursor.execute('''
+            cursor.execute(
+                """
                 SELECT id, date, time, content, created_at
                 FROM memories
                 ORDER BY created_at DESC
                 LIMIT ?
-            ''', (limit,))
+            """,
+                (limit,),
+            )
 
             memories = []
             for row in cursor.fetchall():
-                content = row['content']
-                memories.append({
-                    "id": row['id'],
-                    "date": row['date'],
-                    "time": row['time'],
-                    "content_preview": content[:50] + ("..." if len(content) > 50 else ""),
-                    "created_at": row['created_at']
-                })
+                content = row["content"]
+                memories.append(
+                    {
+                        "id": row["id"],
+                        "date": row["date"],
+                        "time": row["time"],
+                        "content_preview": content[:50] + ("..." if len(content) > 50 else ""),
+                        "created_at": row["created_at"],
+                    }
+                )
 
             return {
                 "success": True,
                 "message": f"Found {len(memories)} memories (total: {total})",
                 "memories": memories,
-                "total": total
+                "total": total,
             }
 
     def get_memory_by_id(self, memory_id: int) -> dict[str, Any] | None:
         with self._get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute('SELECT * FROM memories WHERE id = ?', (memory_id,))
+            cursor.execute("SELECT * FROM memories WHERE id = ?", (memory_id,))
             row = cursor.fetchone()
             return dict(row) if row else None
 
+
 _memory_manager = None
+
 
 def get_memory_manager() -> MemoryManager:
     global _memory_manager
@@ -223,27 +231,38 @@ def get_memory_manager() -> MemoryManager:
         _memory_manager = MemoryManager()
     return _memory_manager
 
+
 def manage_memories(
-        operation: str,
-        content: str | None = None,
-        memory_id: int | None = None,
-        date: str | None = None,
-        time: str | None = None,
-        keyword: str | None = None,
-        console: Console | None = None,
-        limit: int = 20
-    ) -> dict[str, Any]:
+    operation: str,
+    content: str | None = None,
+    memory_id: int | None = None,
+    date: str | None = None,
+    time: str | None = None,
+    keyword: str | None = None,
+    console: Console | None = None,
+    limit: int = 20,
+) -> dict[str, Any]:
     manager = get_memory_manager()
 
     operation = operation.lower().strip()
 
     if console:
-        console.print("\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]")
-        console.print("[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]")
-        console.print("[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]")
+        console.print(
+            "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]"
+        )
+        console.print(
+            "[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]"
+        )
+        console.print(
+            "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]"
+        )
         console.print(f"[bold yellow]Operation:[/bold yellow] {operation}")
-        console.print(f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}")
-        console.print(f"[bold yellow]Memory ID:[/bold yellow] {memory_id if memory_id is not None else '(None)'}")
+        console.print(
+            f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}"
+        )
+        console.print(
+            f"[bold yellow]Memory ID:[/bold yellow] {memory_id if memory_id is not None else '(None)'}"
+        )
         console.print(f"[bold yellow]Date:[/bold yellow] {date if date else '(None)'}")
         console.print(f"[bold yellow]Time:[/bold yellow] {time if time else '(None)'}")
         console.print(f"[bold yellow]Keyword:[/bold yellow] {keyword if keyword else '(None)'}")
@@ -253,7 +272,9 @@ def manage_memories(
         console.print("[bold]Parameter Types:[/bold]")
         console.print(f"  operation: {type(operation).__name__}")
         console.print(f"  content: {type(content).__name__ if content is not None else 'NoneType'}")
-        console.print(f"  memory_id: {type(memory_id).__name__ if memory_id is not None else 'NoneType'}")
+        console.print(
+            f"  memory_id: {type(memory_id).__name__ if memory_id is not None else 'NoneType'}"
+        )
         console.print(f"  date: {type(date).__name__ if date is not None else 'NoneType'}")
         console.print(f"  time: {type(time).__name__ if time is not None else 'NoneType'}")
         console.print(f"  keyword: {type(keyword).__name__ if keyword is not None else 'NoneType'}")
@@ -265,13 +286,17 @@ def manage_memories(
     try:
         if operation == "create":
             if console:
-                console.print(f"[dim]  content length: {len(content) if content else 0} characters[/dim]")
+                console.print(
+                    f"[dim]  content length: {len(content) if content else 0} characters[/dim]"
+                )
             result = manager.create_memory(content=content, date=date, time=time)
             if console:
                 if result.get("success"):
                     console.print(f"[green]✓ Memory created:[/green] ID {result['memory']['id']}")
                     console.print(f"[dim]  Content: {result['memory']['content'][:50]}...[/dim]")
-                    console.print(f"[dim]  Date/Time: {result['memory']['date']} {result['memory']['time']}[/dim]")
+                    console.print(
+                        f"[dim]  Date/Time: {result['memory']['date']} {result['memory']['time']}[/dim]"
+                    )
                 else:
                     console.print(f"[red]✗ {result.get('error')}[/red]")
             return result
@@ -285,13 +310,17 @@ def manage_memories(
                     filters.append(f"date={date}")
                 if keyword:
                     filters.append(f"keyword={keyword}")
-                console.print(f"[dim]  Filters: {', '.join(filters) if filters else 'None (list all)'}[/dim]")
+                console.print(
+                    f"[dim]  Filters: {', '.join(filters) if filters else 'None (list all)'}[/dim]"
+                )
             result = manager.read_memories(memory_id=memory_id, date=date, keyword=keyword)
             if console:
                 if result.get("memories"):
                     console.print(f"[green]✓ Found {len(result['memories'])} memory(ies)[/green]")
                     for m in result["memories"]:
-                        console.print(f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content', '')[:50]}...[/dim]")
+                        console.print(
+                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content', '')[:50]}...[/dim]"
+                        )
                 else:
                     console.print("[dim]No memories found[/dim]")
             return result
@@ -299,34 +328,26 @@ def manage_memories(
         elif operation == "update":
             if console:
                 console.print(f"[dim]  Updating memory ID: {memory_id}[/dim]")
-                console.print(f"[dim]  New content: {content[:50] + '...' if content and len(content) > 50 else content}[/dim]")
+                console.print(
+                    f"[dim]  New content: {content[:50] + '...' if content and len(content) > 50 else content}[/dim]"
+                )
             if memory_id is None or isinstance(memory_id, bool):
-                return {
-                    "success": False,
-                    "error": "memory_id is required for update operation"
-                }
+                return {"success": False, "error": "memory_id is required for update operation"}
             try:
                 memory_id = int(memory_id)
             except (TypeError, ValueError):
-                return {
-                    "success": False,
-                    "error": "memory_id must be an integer"
-                }
+                return {"success": False, "error": "memory_id must be an integer"}
             if memory_id <= 0:
-                return {
-                    "success": False,
-                    "error": "memory_id must be a positive integer"
-                }
+                return {"success": False, "error": "memory_id must be a positive integer"}
             if not isinstance(content, str) or not content.strip():
-                return {
-                    "success": False,
-                    "error": "Content is required for update operation"
-                }
+                return {"success": False, "error": "Content is required for update operation"}
             result = manager.update_memory(memory_id, content)
             if console:
                 if result.get("success"):
                     console.print(f"[green]✓ Memory {memory_id} updated[/green]")
-                    console.print(f"[dim]  New content: {result['memory']['content'][:50]}...[/dim]")
+                    console.print(
+                        f"[dim]  New content: {result['memory']['content'][:50]}...[/dim]"
+                    )
                 else:
                     console.print(f"[red]✗ {result.get('error')}[/red]")
             return result
@@ -335,10 +356,7 @@ def manage_memories(
             if console:
                 console.print(f"[dim]  Deleting memory ID: {memory_id}[/dim]")
             if not memory_id:
-                return {
-                    "success": False,
-                    "error": "memory_id is required for delete operation"
-                }
+                return {"success": False, "error": "memory_id is required for delete operation"}
             result = manager.delete_memory(memory_id)
             if console:
                 if result.get("success"):
@@ -363,9 +381,13 @@ def manage_memories(
                 if result.get("memories"):
                     console.print(f"[green]✓ Found {result.get('total', 0)} memories[/green]")
                     for m in result["memories"]:
-                        console.print(f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content_preview')}[/dim]")
-                    if result.get('total', 0) > len(result.get('memories', [])):
-                        console.print(f"[dim]  ... and {result.get('total', 0) - len(result.get('memories', []))} more[/dim]")
+                        console.print(
+                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content_preview')}[/dim]"
+                        )
+                    if result.get("total", 0) > len(result.get("memories", [])):
+                        console.print(
+                            f"[dim]  ... and {result.get('total', 0) - len(result.get('memories', []))} more[/dim]"
+                        )
                 else:
                     console.print("[dim]No memories found[/dim]")
             return result
@@ -375,13 +397,10 @@ def manage_memories(
                 console.print(f"[red]✗ Unknown operation: {operation}[/red]")
             return {
                 "success": False,
-                "error": f"Unknown operation: {operation}. Supported: create, read, update, delete, list, clear_all"
+                "error": f"Unknown operation: {operation}. Supported: create, read, update, delete, list, clear_all",
             }
 
     except Exception as e:
         if console:
             console.print(f"[red]✗ Memory operation failed:[/red] {e!s}")
-        return {
-            "success": False,
-            "error": f"Memory operation failed: {e!s}"
-        }
+        return {"success": False, "error": f"Memory operation failed: {e!s}"}

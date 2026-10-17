@@ -21,6 +21,7 @@ class CommandResult(Enum):
     CONTINUE = auto()
     PROCESS = auto()
 
+
 class LogResult(Enum):
     SUCCESS = auto()
     FAILURE = auto()

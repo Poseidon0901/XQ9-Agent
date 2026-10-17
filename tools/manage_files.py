@@ -79,9 +79,7 @@ class FileManager:
                     "path": str(target),
                     "content": content,
                     "size": stat.st_size,
-                    "modified_at": datetime.fromtimestamp(
-                        stat.st_mtime
-                    ).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 },
             }
         except Exception as e:
@@ -110,9 +108,7 @@ class FileManager:
                 "file": {
                     "path": str(target),
                     "size": stat.st_size,
-                    "modified_at": datetime.fromtimestamp(
-                        stat.st_mtime
-                    ).isoformat(),
+                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
                 },
             }
         except Exception as e:
@@ -160,13 +156,15 @@ class FileManager:
         for entry in sorted(base.iterdir(), key=lambda p: p.name.lower()):
             try:
                 stat = entry.stat()
-                entries.append({
-                    "name": entry.name,
-                    "path": str(entry),
-                    "type": "dir" if entry.is_dir() else "file",
-                    "size": stat.st_size if entry.is_file() else None,
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                })
+                entries.append(
+                    {
+                        "name": entry.name,
+                        "path": str(entry),
+                        "type": "dir" if entry.is_dir() else "file",
+                        "size": stat.st_size if entry.is_file() else None,
+                        "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    }
+                )
             except Exception:
                 continue
 
@@ -244,11 +242,19 @@ def manage_files(
     operation = operation.lower().strip()
 
     if console:
-        console.print("\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]")
-        console.print("[bold cyan]║           📁 FILE OPERATION - PARAMETERS                     ║[/bold cyan]")
-        console.print("[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]")
+        console.print(
+            "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]"
+        )
+        console.print(
+            "[bold cyan]║           📁 FILE OPERATION - PARAMETERS                     ║[/bold cyan]"
+        )
+        console.print(
+            "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]"
+        )
         console.print(f"[bold yellow]Operation:[/bold yellow] {operation}")
-        console.print(f"[bold yellow]File path:[/bold yellow] {file_path if file_path else '(None)'}")
+        console.print(
+            f"[bold yellow]File path:[/bold yellow] {file_path if file_path else '(None)'}"
+        )
         console.print(
             f"[bold yellow]Content:[/bold yellow] "
             f"{repr(content[:80]) + '...' if content and len(content) > 80 else repr(content)}"
@@ -312,10 +318,7 @@ def manage_files(
                 console.print(f"[dim]  Content preview: {preview}[/dim]")
             elif "entries" in result:
                 for e in result["entries"]:
-                    console.print(
-                        f"[dim]  [{e['type']}] {e['name']} "
-                        f"({e['size']} bytes)[/dim]"
-                    )
+                    console.print(f"[dim]  [{e['type']}] {e['name']} ({e['size']} bytes)[/dim]")
         else:
             console.print(f"[red]✗ {result.get('error')}[/red]")
 
