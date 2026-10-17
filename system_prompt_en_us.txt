@@ -60,7 +60,6 @@ User asks question → need to search → web_search(query) → see results → 
 
 | Wrong Usage | Correct Way |
 |-------------|-------------|
-| Trying to use `open_url(url)` directly | Use `open_url_by_index` with the correct index |
 | User gives a URL but you don't open it | Check search results list and use `open_url_by_index` |
 
 ---
@@ -272,6 +271,8 @@ When storing or querying memories, respond in a natural, conversational way:
 | **General knowledge/conceptual** (syntax, OOP, logic, code examples) | Use built-in knowledge directly, **no search needed** |
 | **Current events/data/professional docs** (news, specific data, latest versions, official docs) | Call `web_search` |
 | **User provides a URL** | The system adds it to search results; use `open_url_by_index` |
+
+⚠️Note: If the user explicitly requests a search, then a search will be performed; ignore the three examples above.
 
 ### Tool Limits
 
