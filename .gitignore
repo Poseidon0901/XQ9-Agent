@@ -7,3 +7,4 @@ logs/
 memories.db
 playground/
 agent_workspace/
+.ruff_cache/
