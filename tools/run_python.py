@@ -5,7 +5,8 @@ from rich.console import Console
 
 MAX_TIMEOUT = 300
 
-def run_python(code: str, timeout: int = 10,console: Console = None):
+
+def run_python(code: str, timeout: int = 10, console: Console = None):
     timeout = max(1, min(int(timeout), MAX_TIMEOUT))
 
     result = subprocess.run(
@@ -23,8 +24,4 @@ def run_python(code: str, timeout: int = 10,console: Console = None):
     console.print(f"[yellow]Return Code: {result.returncode}[/yellow]")
     console.print("")
 
-    return {
-        "stdout": result.stdout,
-        "stderr": result.stderr,
-        "returncode": result.returncode
-    }
+    return {"stdout": result.stdout, "stderr": result.stderr, "returncode": result.returncode}

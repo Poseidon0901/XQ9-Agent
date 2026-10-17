@@ -4,9 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from rich.console import Console
-
 from tools.config import LogResult
+
 
 class LogManager:
     def __init__(self, log_dir: str = "logs"):
@@ -63,12 +62,14 @@ class LogManager:
         for f in files[:limit]:
             try:
                 stat = os.stat(f)
-                entries.append({
-                    "name": os.path.basename(f),
-                    "path": f,
-                    "size": stat.st_size,
-                    "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
-                })
+                entries.append(
+                    {
+                        "name": os.path.basename(f),
+                        "path": f,
+                        "size": stat.st_size,
+                        "modified_at": datetime.fromtimestamp(stat.st_mtime).isoformat(),
+                    }
+                )
             except Exception:
                 continue
 

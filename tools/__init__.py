@@ -25,12 +25,12 @@ TOOLS = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search query to use for the web search."
+                        "description": "The search query to use for the web search.",
                     }
                 },
-                "required": ["query"]
-            }
-        }
+                "required": ["query"],
+            },
+        },
     },
     {
         "type": "function",
@@ -42,12 +42,12 @@ TOOLS = [
                 "properties": {
                     "index": {
                         "type": "integer",
-                        "description": "The index number (1-based) from the most recent search results."
+                        "description": "The index number (1-based) from the most recent search results.",
                     }
                 },
-                "required": ["index"]
-            }
-        }
+                "required": ["index"],
+            },
+        },
     },
     {
         "type": "function",
@@ -57,18 +57,15 @@ TOOLS = [
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "code": {
-                        "type": "string",
-                        "description": "Python code to execute."
-                    },
+                    "code": {"type": "string", "description": "Python code to execute."},
                     "timeout": {
                         "type": "integer",
-                        "description": "Maximum execution time in seconds. (Default 10 seconds, max 300)"
-                    }
+                        "description": "Maximum execution time in seconds. (Default 10 seconds, max 300)",
+                    },
                 },
-                "required": ["code"]
-            }
-        }
+                "required": ["code"],
+            },
+        },
     },
     {
         "type": "function",
@@ -97,36 +94,36 @@ Always query first before creating/updating to avoid duplicates.""",
                     "operation": {
                         "type": "string",
                         "description": "Operation to perform",
-                        "enum": ["create", "read", "update", "delete", "list", "clear_all"]
+                        "enum": ["create", "read", "update", "delete", "list", "clear_all"],
                     },
                     "memory_id": {
                         "type": "integer",
-                        "description": "Memory ID (required for update, delete; optional for read)"
+                        "description": "Memory ID (required for update, delete; optional for read)",
                     },
                     "content": {
                         "type": "string",
-                        "description": "Memory content. REQUIRED for create and update. Put the full text here."
+                        "description": "Memory content. REQUIRED for create and update. Put the full text here.",
                     },
                     "date": {
                         "type": "string",
-                        "description": "Date in YYYY-MM-DD format (optional for create/read)"
+                        "description": "Date in YYYY-MM-DD format (optional for create/read)",
                     },
                     "time": {
                         "type": "string",
-                        "description": "Time in HH:MM format (optional for create)"
+                        "description": "Time in HH:MM format (optional for create)",
                     },
                     "keyword": {
                         "type": "string",
-                        "description": "Search keyword for read operation. Searches within memory content using SQL LIKE."
+                        "description": "Search keyword for read operation. Searches within memory content using SQL LIKE.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of results for list operation (default 20, max 200)"
-                    }
+                        "description": "Maximum number of results for list operation (default 20, max 200)",
+                    },
                 },
-                "required": ["operation"]
-            }
-        }
+                "required": ["operation"],
+            },
+        },
     },
     {
         "type": "function",
@@ -161,23 +158,23 @@ Examples:
                     "operation": {
                         "type": "string",
                         "description": "Operation to perform",
-                        "enum": ["create", "read", "update", "delete", "list", "clear_all"]
+                        "enum": ["create", "read", "update", "delete", "list", "clear_all"],
                     },
                     "file_path": {
                         "type": "string",
-                        "description": "Path to the file or directory. If not provided, defaults to agent_workspace for create and list. For read/update/delete, this is required. Absolute paths (e.g., 'C:\\\\Users\\\\Blackcat\\\\Documents\\\\test.txt') are supported."
+                        "description": "Path to the file or directory. If not provided, defaults to agent_workspace for create and list. For read/update/delete, this is required. Absolute paths (e.g., 'C:\\\\Users\\\\Blackcat\\\\Documents\\\\test.txt') are supported.",
                     },
                     "content": {
                         "type": "string",
-                        "description": "File content. REQUIRED for create and update. Put the full text here."
+                        "description": "File content. REQUIRED for create and update. Put the full text here.",
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of results for list operation (default 20, max 200)"
-                    }
+                        "description": "Maximum number of results for list operation (default 20, max 200)",
+                    },
                 },
-                "required": ["operation"]
-            }
-        }
-    }
+                "required": ["operation"],
+            },
+        },
+    },
 ]

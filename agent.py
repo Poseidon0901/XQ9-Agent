@@ -22,11 +22,11 @@ from tools.manage_memories import get_memory_manager
 
 if sys.platform == "win32":
     try:
-        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     except AttributeError:
         pass
     try:
-        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
+        sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace")
     except Exception:
         pass
 
@@ -43,15 +43,13 @@ if MODEL:
 if API_KEY:
     print(f"API_KEY = {f'{API_KEY[:10]}...' if len(API_KEY) > 10 else '***'}")
 
+
 class App:
     def __init__(self):
         self.console = Console()
 
-        self.client = OpenAI(
-            base_url=API_URL,
-            api_key=API_KEY
-        )
-        self.launch_timestamp = datetime.now().strftime('%Y-%m-%d.%H.%M.%S')
+        self.client = OpenAI(base_url=API_URL, api_key=API_KEY)
+        self.launch_timestamp = datetime.now().strftime("%Y-%m-%d.%H.%M.%S")
 
         self.last_search_results = []
         self.last_search_query = ""
@@ -64,8 +62,12 @@ class App:
 
         self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")
         self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")
-        self.system_message_zh_tw_no_tools = Path("system_prompt_zh_tw_no_tools.txt").read_text(encoding="utf-8")
-        self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.txt").read_text(encoding="utf-8")
+        self.system_message_zh_tw_no_tools = Path("system_prompt_zh_tw_no_tools.txt").read_text(
+            encoding="utf-8"
+        )
+        self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.txt").read_text(
+            encoding="utf-8"
+        )
 
         self.messages = []
 
@@ -73,22 +75,20 @@ class App:
         self.memory_manager = get_memory_manager()
 
     def _extract_url_from_input(self, text: str) -> str | None:
-        pattern = r'(?:https?://|www\.)[^\s\'"]+|[\w-]+\.(?:com|org|net|tw|jp|io|dev|ai|app)[^\s\'"]*'
+        pattern = (
+            r'(?:https?://|www\.)[^\s\'"]+|[\w-]+\.(?:com|org|net|tw|jp|io|dev|ai|app)[^\s\'"]*'
+        )
         match = re.search(pattern, text, re.IGNORECASE)
         if match:
             url = match.group(0)
-            if not url.startswith(('http://', 'https://')):
-                url = 'https://' + url
+            if not url.startswith(("http://", "https://")):
+                url = "https://" + url
             return url
         return None
 
     def get_system_prompt(self, is_chinese_present: bool):
         if self.use_tools:
-            return (
-                self.system_message_zh_tw
-                if is_chinese_present
-                else self.system_message_en_us
-            )
+            return self.system_message_zh_tw if is_chinese_present else self.system_message_en_us
         else:
             return (
                 self.system_message_zh_tw_no_tools
@@ -115,14 +115,14 @@ class App:
 
         new_messages.extend(recent)
         self.messages = new_messages
-        self.console.print("[dim]Part of the conversation history was cleaned up to save memory.[/dim]")
+        self.console.print(
+            "[dim]Part of the conversation history was cleaned up to save memory.[/dim]"
+        )
 
     def main(self):
         while True:
             try:
-                user_input = self.console.input(
-                    "[bold cyan]You > [/bold cyan]"
-                )
+                user_input = self.console.input("[bold cyan]You > [/bold cyan]")
 
                 if user_input.lower().startswith("/"):
                     result = self.command_handler.execute(user_input)
@@ -144,17 +144,11 @@ class App:
                     system_prompt_changed = False
 
                     if not self.messages:
-                        self.messages.append({
-                            "role": "system",
-                            "content": system_prompt
-                        })
+                        self.messages.append({"role": "system", "content": system_prompt})
                         system_prompt_changed = True
 
                     elif self.messages[0].get("status") == "waiting for new system prompt":
-                        self.messages[0] = {
-                            "role": "system",
-                            "content": system_prompt
-                        }
+                        self.messages[0] = {"role": "system", "content": system_prompt}
                         system_prompt_changed = True
 
                     if system_prompt_changed:
@@ -164,10 +158,7 @@ class App:
                             else "[yellow]Using en_us system prompt[/yellow]"
                         )
 
-                self.messages.append({
-                    "role": "user",
-                    "content": user_input
-                })
+                self.messages.append({"role": "user", "content": user_input})
 
                 if len(self.messages) > 30:
                     self._cleanup_old_messages()
@@ -176,10 +167,7 @@ class App:
                     kwargs = {
                         "model": MODEL,
                         "messages": self.messages,
-                        "extra_body": {
-                            "reasoning": True,
-                            "reasoning_effort": "medium"
-                        }
+                        "extra_body": {"reasoning": True, "reasoning_effort": "medium"},
                     }
 
                     if self.use_tools:
@@ -201,21 +189,29 @@ class App:
                     tool_calls_dict = {}
 
                     try:
-                        with Live(Markdown(""), console=self.console, refresh_per_second=10) as live:
+                        with Live(
+                            Markdown(""), console=self.console, refresh_per_second=10
+                        ) as live:
                             for chunk in stream:
                                 if not chunk.choices:
                                     continue
 
                                 delta = chunk.choices[0].delta
 
-                                reasoning = getattr(delta, 'reasoning_content', None) or getattr(delta, 'reasoning', None)
+                                reasoning = getattr(delta, "reasoning_content", None) or getattr(
+                                    delta, "reasoning", None
+                                )
                                 if reasoning:
                                     reasoning_content += reasoning
                                     live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
                                 if delta.content:
                                     full_content += delta.content
                                     if reasoning_content:
-                                        live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"))
+                                        live.update(
+                                            Markdown(
+                                                f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"
+                                            )
+                                        )
                                     else:
                                         live.update(Markdown(full_content))
                                 if delta.tool_calls:
@@ -224,8 +220,10 @@ class App:
                                         if index not in tool_calls_dict:
                                             tool_calls_dict[index] = {
                                                 "id": tc.id or "",
-                                                "name": tc.function.name if tc.function and tc.function.name else "",
-                                                "arguments": ""
+                                                "name": tc.function.name
+                                                if tc.function and tc.function.name
+                                                else "",
+                                                "arguments": "",
                                             }
                                         if tc.id:
                                             tool_calls_dict[index]["id"] = tc.id
@@ -233,7 +231,9 @@ class App:
                                             if tc.function.name:
                                                 tool_calls_dict[index]["name"] = tc.function.name
                                             if tc.function.arguments:
-                                                tool_calls_dict[index]["arguments"] += tc.function.arguments
+                                                tool_calls_dict[index]["arguments"] += (
+                                                    tc.function.arguments
+                                                )
 
                     except KeyboardInterrupt:
                         try:
@@ -243,10 +243,7 @@ class App:
 
                         self.client.close()
 
-                        self.client = OpenAI(
-                            base_url=API_URL,
-                            api_key=API_KEY
-                        )
+                        self.client = OpenAI(base_url=API_URL, api_key=API_KEY)
 
                         self.console.print("\n[yellow]Generation interrupted.[/yellow]")
                         break
@@ -254,11 +251,13 @@ class App:
                     self.console.print("\n")
 
                     if not tool_calls_dict:
-                        self.messages.append({
-                            "role": "assistant",
-                            "content": full_content,
-                            "reasoning_content": reasoning_content
-                        })
+                        self.messages.append(
+                            {
+                                "role": "assistant",
+                                "content": full_content,
+                                "reasoning_content": reasoning_content,
+                            }
+                        )
                         break
 
                     formatted_tool_calls = [
@@ -267,18 +266,20 @@ class App:
                             "type": "function",
                             "function": {
                                 "name": tool_data["name"],
-                                "arguments": tool_data["arguments"]
-                            }
+                                "arguments": tool_data["arguments"],
+                            },
                         }
                         for tool_data in tool_calls_dict.values()
                     ]
 
-                    self.messages.append({
-                        "role": "assistant",
-                        "content": full_content or "",
-                        "reasoning_content": reasoning_content or "",
-                        "tool_calls": formatted_tool_calls
-                    })
+                    self.messages.append(
+                        {
+                            "role": "assistant",
+                            "content": full_content or "",
+                            "reasoning_content": reasoning_content or "",
+                            "tool_calls": formatted_tool_calls,
+                        }
+                    )
 
                     for tool_call in formatted_tool_calls:
                         tool_id = tool_call["id"]
@@ -290,19 +291,18 @@ class App:
                         except json.JSONDecodeError as e:
                             result = {
                                 "error": f"Failed to parse tool arguments: {e!s}",
-                                "type": "JSONDecodeError"
+                                "type": "JSONDecodeError",
                             }
                         except Exception as e:
-                            result = {
-                                "error": str(e),
-                                "type": type(e).__name__
-                            }
+                            result = {"error": str(e), "type": type(e).__name__}
 
-                        self.messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_id,
-                            "content": json.dumps(result, ensure_ascii=False)
-                        })
+                        self.messages.append(
+                            {
+                                "role": "tool",
+                                "tool_call_id": tool_id,
+                                "content": json.dumps(result, ensure_ascii=False),
+                            }
+                        )
 
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]Bye![/yellow]")

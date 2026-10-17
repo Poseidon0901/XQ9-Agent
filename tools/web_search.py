@@ -28,9 +28,17 @@ MODULE_NAME = "web_search"
 
 log_manager = get_log_manager()
 
-def log(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: Any | None = None):
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    content = f"\n{'='*70}\n[{timestamp}] SEARCH: {query}\n{'='*70}\n"
+
+def log(
+    query: str,
+    results: list,
+    log_file_path: Path,
+    method: str | None = None,
+    error: str | None = None,
+    raw_data: Any | None = None,
+):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    content = f"\n{'=' * 70}\n[{timestamp}] SEARCH: {query}\n{'=' * 70}\n"
     if error:
         content += f"ERROR: {error}\n\n"
         log_manager.write_log(MODULE_NAME, content)
@@ -61,6 +69,7 @@ def log(query: str, results: list, log_file_path: Path, method: str | None = Non
 
     content += "\n"
     log_manager.write_log(MODULE_NAME, content)
+
 
 def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
     text = f"{title} {snippet}".lower()
@@ -108,6 +117,7 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
 
     return False
 
+
 def _search_duckduckgo_html(query: str, console: Console):
     results = []
     try:
@@ -115,11 +125,13 @@ def _search_duckduckgo_html(query: str, console: Console):
             raw_results = ddgs.text(query, region="tw-tz", max_results=10)
 
             for item in raw_results:
-                results.append({
-                    "title": item.get("title", ""),
-                    "snippet": item.get("body", "No description available"),
-                    "url": item.get("href", "")
-                })
+                results.append(
+                    {
+                        "title": item.get("title", ""),
+                        "snippet": item.get("body", "No description available"),
+                        "url": item.get("href", ""),
+                    }
+                )
     except Exception as e:
         raise ValueError(f"DuckDuckGo search failed: {e!s}")
 
@@ -129,20 +141,13 @@ def _search_duckduckgo_html(query: str, console: Console):
     return {
         "query": query,
         "results": results,
-        "_raw_data": {
-            "source": "duckduckgo_official_package"
-        }
+        "_raw_data": {"source": "duckduckgo_official_package"},
     }
+
 
 def _search_duckduckgo_api(query: str, console: Console):
     api_url = "https://api.duckduckgo.com/"
-    params = {
-        "q": query,
-        "format": "json",
-        "no_html": 1,
-        "skip_disambig": 1,
-        "t": "llama_search"
-    }
+    params = {"q": query, "format": "json", "no_html": 1, "skip_disambig": 1, "t": "llama_search"}
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
@@ -162,8 +167,8 @@ def _search_duckduckgo_api(query: str, console: Console):
 
     raw_data = data.copy()
 
-    if 'raw' in raw_data:
-        del raw_data['raw']
+    if "raw" in raw_data:
+        del raw_data["raw"]
 
     results = []
     seen_urls = set()
@@ -173,11 +178,9 @@ def _search_duckduckgo_api(query: str, console: Console):
         url = normalize_url(url)
         if url and url.startswith(("http://", "https://")) and url not in seen_urls:
             seen_urls.add(url)
-            results.append({
-                "title": data.get("Heading", query),
-                "snippet": data["Abstract"][:500],
-                "url": url
-            })
+            results.append(
+                {"title": data.get("Heading", query), "snippet": data["Abstract"][:500], "url": url}
+            )
 
     for topic in data.get("RelatedTopics", []):
         if "Result" not in topic:
@@ -211,26 +214,23 @@ def _search_duckduckgo_api(query: str, console: Console):
         if is_suspicious_result(title, snippet or "", url):
             continue
 
-        results.append({
-            "title": title,
-            "snippet": snippet or "No description available",
-            "url": url
-        })
+        results.append(
+            {"title": title, "snippet": snippet or "No description available", "url": url}
+        )
 
         if len(results) >= 10:
             break
 
     if not results:
-        raise ValueError(f"No relevant results from DuckDuckGo API. Raw data keys: {list(data.keys())}")
+        raise ValueError(
+            f"No relevant results from DuckDuckGo API. Raw data keys: {list(data.keys())}"
+        )
 
-    return {
-        "query": query,
-        "results": results,
-        "_raw_data": raw_data
-    }
+    return {"query": query, "results": results, "_raw_data": raw_data}
+
 
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
-    has_traditional = bool(re.search(r'[\u3400-\u4dbf\uFA0E-\uFA2F]', query))
+    has_traditional = bool(re.search(r"[\u3400-\u4dbf\uFA0E-\uFA2F]", query))
 
     console.print(f"[dim]Wikipedia API search ({lang}):[/dim] {query}")
 
@@ -248,17 +248,12 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
             "format": "json",
             "utf8": 1,
             "srlimit": 5,
-            **({"variant":"zh-tw"} if has_traditional else {})
+            **({"variant": "zh-tw"} if has_traditional else {}),
         }
 
         response = None
         for _attempt in range(2):
-            response = requests.get(
-                API_URL,
-                params=search_params,
-                headers=headers,
-                timeout=10
-            )
+            response = requests.get(API_URL, params=search_params, headers=headers, timeout=10)
             if response.status_code == 429:
                 time.sleep(1.5)
                 continue
@@ -286,15 +281,10 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
             "exchars": 400,
             "format": "json",
             "utf8": 1,
-            "variant": "zh-tw"
+            "variant": "zh-tw",
         }
 
-        ext_response = requests.get(
-            API_URL,
-            params=extract_params,
-            headers=headers,
-            timeout=10
-        )
+        ext_response = requests.get(API_URL, params=extract_params, headers=headers, timeout=10)
         ext_response.raise_for_status()
         ext_data = ext_response.json()
         pages = ext_data.get("query", {}).get("pages", {})
@@ -310,10 +300,15 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
                 continue
             seen_titles.add(title)
 
-            if any(title.startswith(prefix) for prefix in ["Wikipedia:", "Special:", "Help:", "Template:", "Category:"]):
+            if any(
+                title.startswith(prefix)
+                for prefix in ["Wikipedia:", "Special:", "Help:", "Template:", "Category:"]
+            ):
                 continue
 
-            page_url = f"https://{lang}.wikipedia.org/wiki/{quote(title.replace(' ', '_'), safe='_()')}"
+            page_url = (
+                f"https://{lang}.wikipedia.org/wiki/{quote(title.replace(' ', '_'), safe='_()')}"
+            )
 
             snippet = pages.get(pid, {}).get("extract", "").strip()
             if not snippet:
@@ -321,18 +316,13 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
                 if raw_snippet:
                     snippet = BeautifulSoup(raw_snippet, "html.parser").get_text()
 
-            results.append({
-                "title": title,
-                "snippet": snippet or "Wikipedia article",
-                "url": page_url
-            })
+            results.append(
+                {"title": title, "snippet": snippet or "Wikipedia article", "url": page_url}
+            )
 
         if results:
             console.print(f"[green]✓ Found {len(results)} Wikipedia articles[/green]")
-            return {
-                "query": query,
-                "results": results
-            }
+            return {"query": query, "results": results}
         else:
             raise ValueError("No valid Wikipedia results found")
 
@@ -346,10 +336,11 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
         console.print(f"[dim]Wikipedia API error: {e!s}[/dim]")
         raise ValueError(f"Wikipedia API error: {e!s}")
 
+
 def web_search(query: str, console: Console, launch_timestamp: str):
     console.print(f"[yellow]Searching the internet for:[/yellow] {query}")
 
-    has_chinese = bool(re.search(r'[\u4e00-\u9fff]', query))
+    has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
 
     if has_chinese:
         search_methods = [
@@ -394,11 +385,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
         error_msg = f"All search methods failed. Last error: {last_error}"
         console.print(f"[red]{error_msg}[/red]")
         log(query, [], log_file_path, error=error_msg, raw_data=raw_data)
-        return {
-            "query": query,
-            "error": error_msg,
-            "results": []
-        }
+        return {"query": query, "error": error_msg, "results": []}
 
     filtered_results = []
     seen_urls = set()
@@ -412,20 +399,24 @@ def web_search(query: str, console: Console, launch_timestamp: str):
             console.print(f"[dim]Skipping suspicious:[/dim] {url}")
             continue
 
-        filtered_results.append({
-            "title": r["title"],
-            "snippet": r["snippet"][:500] if len(r["snippet"]) > 500 else r["snippet"],
-            "url": url
-        })
+        filtered_results.append(
+            {
+                "title": r["title"],
+                "snippet": r["snippet"][:500] if len(r["snippet"]) > 500 else r["snippet"],
+                "url": url,
+            }
+        )
 
         if len(filtered_results) >= 10:
             break
 
-    final_result = {
-        "query": query,
-        "results": filtered_results,
-        "method": successful_method
-    }
+    final_result = {"query": query, "results": filtered_results, "method": successful_method}
 
-    log(query=query, results=filtered_results, log_file_path=log_file_path, method=successful_method, raw_data=raw_data)
+    log(
+        query=query,
+        results=filtered_results,
+        log_file_path=log_file_path,
+        method=successful_method,
+        raw_data=raw_data,
+    )
     return final_result

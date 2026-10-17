@@ -209,11 +209,11 @@ All configuration is managed through environment variables in `.env`:
 You can modify these in `agent.py`:
 
 ```python
-MAX_TOTAL_TOOL_CALLS = 30   # Max tool calls per conversation
-MAX_SEARCH_CALLS = 5        # Max web searches per conversation
-MAX_OPEN_URL_CALLS = 10     # Max URL opens per conversation
-MAX_SNIPPET_LENGTH = 150    # Search snippet length
-MAX_SEARCH_RESULTS_KEPT = 5 # Results to keep in context
+MAX_TOTAL_TOOL_CALLS = 30  # Max tool calls per conversation
+MAX_SEARCH_CALLS = 5  # Max web searches per conversation
+MAX_OPEN_URL_CALLS = 10  # Max URL opens per conversation
+MAX_SNIPPET_LENGTH = 150  # Search snippet length
+MAX_SEARCH_RESULTS_KEPT = 5  # Results to keep in context
 ```
 
 ## 📝 Logging

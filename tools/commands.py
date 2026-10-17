@@ -24,7 +24,7 @@ class CommandHandler:
         self.app_instance.console.print("[yellow]Warning: Deleting all log file(s)! [/yellow]")
         confirm = self.app_instance.console.input("[bold red]Are you sure？(y/N): [/bold red]")
 
-        if confirm.lower() != 'y':
+        if confirm.lower() != "y":
             self.app_instance.console.print("[dim]Cancelled[/dim]")
             return CommandResult.CONTINUE
 
@@ -42,7 +42,9 @@ class CommandHandler:
                 self.app_instance.console.print(f"[dim]Deleted: {os.path.basename(log_file)}[/dim]")
                 deleted_count += 1
             except Exception as e:
-                self.app_instance.console.print(f"[red]Failed to delete {os.path.basename(log_file)}: {e}[/red]")
+                self.app_instance.console.print(
+                    f"[red]Failed to delete {os.path.basename(log_file)}: {e}[/red]"
+                )
 
         self.app_instance.console.print(f"[green]Deleted {deleted_count} log file(s).[/green]")
 
@@ -66,11 +68,9 @@ class CommandHandler:
 
         if self.app_instance.use_system_prompt:
             if not self.app_instance.messages or self.app_instance.messages[0]["role"] != "system":
-                self.app_instance.messages.insert(0, {
-                    "role": "system",
-                    "status": "waiting for new system prompt",
-                    "content": ""
-                })
+                self.app_instance.messages.insert(
+                    0, {"role": "system", "status": "waiting for new system prompt", "content": ""}
+                )
         else:
             if self.app_instance.messages and self.app_instance.messages[0]["role"] == "system":
                 self.app_instance.messages.pop(0)
@@ -85,18 +85,19 @@ class CommandHandler:
 
         if self.app_instance.use_system_prompt:
             if self.app_instance.messages and self.app_instance.messages[0]["role"] == "system":
-                self.app_instance.messages[0]["content"] = self.app_instance.get_system_prompt(has_chinese(self.app_instance.messages[0]["content"]))
+                self.app_instance.messages[0]["content"] = self.app_instance.get_system_prompt(
+                    has_chinese(self.app_instance.messages[0]["content"])
+                )
             else:
-                self.app_instance.messages.insert(0, {
-                    "role": "system",
-                    "content": self.app_instance.get_system_prompt(False)
-                })
+                self.app_instance.messages.insert(
+                    0, {"role": "system", "content": self.app_instance.get_system_prompt(False)}
+                )
 
         self.app_instance.console.print(f"[yellow]Tools {status}.[/yellow]")
         return CommandResult.CONTINUE
 
     def execute(self, command: str) -> CommandResult:
-        match command.lstrip('/').lower():
+        match command.lstrip("/").lower():
             case "exit" | "quit":
                 return self.cmd_exit()
             case "clear" | "erase":

@@ -40,19 +40,14 @@ class ToolHandler:
 
         handler = self.handlers.get(name)
         if not handler:
-            return {
-                "error": f"Unknown function: {name}"
-            }
+            return {"error": f"Unknown function: {name}"}
 
         self.total_tool_calls += 1
 
         try:
             return handler(args)
         except Exception as e:
-            return {
-                "error": f"Tool execution failed: {e!s}",
-                "type": type(e).__name__
-            }
+            return {"error": f"Tool execution failed: {e!s}", "type": type(e).__name__}
 
     def handle_web_search(self, args: dict[str, Any]) -> dict[str, Any]:
         query = args.get("query", "").strip()
@@ -64,7 +59,7 @@ class ToolHandler:
         if query_key in self.searched_queries:
             return {
                 "error": "You have already executed this search query. "
-                        "Do not repeat searches. Please answer the user using existing search results."
+                "Do not repeat searches. Please answer the user using existing search results."
             }
 
         if self.search_calls >= self.max_search_calls:
@@ -75,9 +70,7 @@ class ToolHandler:
 
         self.app.console.print(f"[yellow]Searching:[/yellow] {query}")
         search_result = web_search(
-            query,
-            console=self.app.console,
-            launch_timestamp=self.app.launch_timestamp
+            query, console=self.app.console, launch_timestamp=self.app.launch_timestamp
         )
 
         if search_result.get("error"):
@@ -92,8 +85,8 @@ class ToolHandler:
         if results:
             self.app.console.print(f"[green]Found {len(results)} search results[/green]")
             for i, r in enumerate(results[:3], 1):
-                short_title = r.get('title', '')[:60]
-                if len(r.get('title', '')) > 60:
+                short_title = r.get("title", "")[:60]
+                if len(r.get("title", "")) > 60:
                     short_title += "..."
                 self.app.console.print(f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]")
 
@@ -103,7 +96,7 @@ class ToolHandler:
             "query": query,
             "results": compressed_results,
             "formatted": formatted_results,
-            "total": len(compressed_results)
+            "total": len(compressed_results),
         }
 
     def handle_open_url_by_index(self, args: dict[str, Any]) -> dict[str, Any]:
@@ -112,24 +105,19 @@ class ToolHandler:
         try:
             index = int(index)
         except (ValueError, TypeError):
-            return {
-                "error": f"Invalid index: {index}. Please submit an integer."
-            }
+            return {"error": f"Invalid index: {index}. Please submit an integer."}
 
         if self.open_url_calls >= self.max_open_url_calls:
             return {"error": "open_url_by_index limit reached."}
 
         if not self.app.last_search_results:
-            return {
-                "error": "No available results. Please run web_search first.",
-                "content": ""
-            }
+            return {"error": "No available results. Please run web_search first.", "content": ""}
 
         if index < 1 or index > len(self.app.last_search_results):
             return {
                 "error": f"Index {index} out of range. Valid range: 1-{len(self.app.last_search_results)}",
                 "content": "",
-                "available_indices": list(range(1, len(self.app.last_search_results) + 1))
+                "available_indices": list(range(1, len(self.app.last_search_results) + 1)),
             }
 
         self.open_url_calls += 1
@@ -141,10 +129,7 @@ class ToolHandler:
         self.app.console.print(f"[yellow]Opening result #{index}:[/yellow] {title}")
         self.app.console.print(f"[dim]URL: {url}[/dim]")
 
-        result = open_url(
-            url,
-            console=self.app.console
-        )
+        result = open_url(url, console=self.app.console)
 
         result["selected_index"] = index
         result["selected_title"] = title
@@ -158,11 +143,7 @@ class ToolHandler:
         if not code or not code.strip():
             return {"error": "No Python code provided."}
 
-        return run_python(
-            code=code,
-            timeout=timeout,
-            console=self.app.console
-        )
+        return run_python(code=code, timeout=timeout, console=self.app.console)
 
     def handle_manage_memories(self, args: dict[str, Any]) -> dict[str, Any]:
         operation = args.get("operation", "")
@@ -176,7 +157,7 @@ class ToolHandler:
             time=args.get("time"),
             keyword=args.get("keyword"),
             console=self.app.console,
-            limit=limit
+            limit=limit,
         )
 
         return result
@@ -201,11 +182,13 @@ class ToolHandler:
     def _compress_results(self, results: list) -> list:
         compressed = []
         for r in results[:MAX_SEARCH_RESULTS_KEPT]:
-            compressed.append({
-                "title": r.get("title", "")[:100],
-                "snippet": r.get("snippet", "")[:MAX_SNIPPET_LENGTH],
-                "url": r.get("url", "")
-            })
+            compressed.append(
+                {
+                    "title": r.get("title", "")[:100],
+                    "snippet": r.get("snippet", "")[:MAX_SNIPPET_LENGTH],
+                    "url": r.get("url", ""),
+                }
+            )
         return compressed
 
     def _format_search_results(self, results: list, query: str) -> str:
@@ -217,9 +200,9 @@ class ToolHandler:
         formatted = f"## Search results: {query}\n\n"
 
         for i, result in enumerate(results_to_show, 1):
-            title = result.get('title', 'Untitled')[:80]
-            snippet = result.get('snippet', 'No snippet')[:MAX_SNIPPET_LENGTH]
-            if len(result.get('snippet', '')) > MAX_SNIPPET_LENGTH:
+            title = result.get("title", "Untitled")[:80]
+            snippet = result.get("snippet", "No snippet")[:MAX_SNIPPET_LENGTH]
+            if len(result.get("snippet", "")) > MAX_SNIPPET_LENGTH:
                 snippet += "..."
 
             formatted += f"**[{i}] {title}**\n"
@@ -245,15 +228,15 @@ class ToolHandler:
             if result.get("url") == url:
                 return
 
-        self.app.last_search_results.append({
-            "title": f"URL: {url}",
-            "snippet": f"User provided URL: {url}",
-            "url": url
-        })
+        self.app.last_search_results.append(
+            {"title": f"URL: {url}", "snippet": f"User provided URL: {url}", "url": url}
+        )
 
         self.app.last_search_query = query
         self.app.console.print(f"[green]✓ Added URL to search results:[/green] {url}")
-        self.app.console.print(f"[dim]Use index {len(self.app.last_search_results)} to open it.[/dim]")
+        self.app.console.print(
+            f"[dim]Use index {len(self.app.last_search_results)} to open it.[/dim]"
+        )
 
     def reset_counters(self):
         self.search_calls = 0
