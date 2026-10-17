@@ -12,6 +12,7 @@ from ddgs import DDGS
 from rich.console import Console
 
 from tools.common_funcs import get_domain, normalize_url
+from tools.logs import get_log_manager
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",
@@ -23,41 +24,43 @@ SUSPICIOUS_KEYWORDS = {
     "coming soon",
 }
 
-def log_web_search(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: Any | None = None):
+MODULE_NAME = "web_search"
+
+log_manager = get_log_manager()
+
+def log(query: str, results: list, log_file_path: Path, method: str | None = None, error: str | None = None, raw_data: Any | None = None):
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    with open(log_file_path, "a", encoding="utf-8") as f:
-        f.write(f"\n{'='*70}\n")
-        f.write(f"[{timestamp}] SEARCH: {query}\n")
-        f.write(f"{'='*70}\n")
+    content = f"\n{'='*70}\n[{timestamp}] SEARCH: {query}\n{'='*70}\n"
+    if error:
+        content += f"ERROR: {error}\n\n"
+        log_manager.write_log(MODULE_NAME, content)
+        return
 
-        if error:
-            f.write(f"ERROR: {error}\n\n")
-            return
+    content += f"Method: {method if method else 'Unknown'}\n"
+    content += f"Total Results: {len(results) if results else 0}\n\n"
 
-        f.write(f"Method: {method if method else 'Unknown'}\n")
-        f.write(f"Total Results: {len(results) if results else 0}\n\n")
+    if raw_data:
+        content += "-" * 50 + "\n"
+        content += "RAW RESPONSE (first 2000 chars):\n"
+        content += "-" * 50 + "\n"
+        raw_str = json.dumps(raw_data, ensure_ascii=False, indent=2)[:2000]
+        content += raw_str
+        if len(json.dumps(raw_data, ensure_ascii=False)) > 2000:
+            content += "\n... [truncated]"
+        content += "\n" + "-" * 50 + "\n\n"
 
-        if raw_data:
-            f.write("-" * 50 + "\n")
-            f.write("RAW RESPONSE (first 2000 chars):\n")
-            f.write("-" * 50 + "\n")
-            raw_str = json.dumps(raw_data, ensure_ascii=False, indent=2)[:2000]
-            f.write(raw_str)
-            if len(json.dumps(raw_data, ensure_ascii=False)) > 2000:
-                f.write("\n... [truncated]")
-            f.write("\n" + "-" * 50 + "\n\n")
+    if results:
+        for i, result in enumerate(results, 1):
+            content += f"Result {i}:\n"
+            content += f"  Title: {result.get('title', 'N/A')}\n"
+            content += f"  URL: {result.get('url', 'N/A')}\n"
+            content += f"  Snippet: {result.get('snippet', 'N/A')[:200]}{'...' if len(result.get('snippet', '')) > 200 else ''}\n"
+            content += "-" * 50 + "\n"
+    else:
+        content += "No results found.\n"
 
-        if results:
-            for i, result in enumerate(results, 1):
-                f.write(f"Result {i}:\n")
-                f.write(f"  Title: {result.get('title', 'N/A')}\n")
-                f.write(f"  URL: {result.get('url', 'N/A')}\n")
-                f.write(f"  Snippet: {result.get('snippet', 'N/A')[:200]}{'...' if len(result.get('snippet', '')) > 200 else ''}\n")
-                f.write("-" * 50 + "\n")
-        else:
-            f.write("No results found.\n")
-
-        f.write("\n")
+    content += "\n"
+    log_manager.write_log(MODULE_NAME, content)
 
 def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
     text = f"{title} {snippet}".lower()
@@ -390,7 +393,7 @@ def web_search(query: str, console: Console, launch_timestamp: str):
     if not results:
         error_msg = f"All search methods failed. Last error: {last_error}"
         console.print(f"[red]{error_msg}[/red]")
-        log_web_search(query, [], log_file_path, error=error_msg, raw_data=raw_data)
+        log(query, [], log_file_path, error=error_msg, raw_data=raw_data)
         return {
             "query": query,
             "error": error_msg,
@@ -424,5 +427,5 @@ def web_search(query: str, console: Console, launch_timestamp: str):
         "method": successful_method
     }
 
-    log_web_search(query=query, results=filtered_results, log_file_path=log_file_path, method=successful_method, raw_data=raw_data)
+    log(query=query, results=filtered_results, log_file_path=log_file_path, method=successful_method, raw_data=raw_data)
     return final_result

@@ -143,8 +143,7 @@ class ToolHandler:
 
         result = open_url(
             url,
-            console=self.app.console,
-            launch_timestamp=self.app.launch_timestamp
+            console=self.app.console
         )
 
         result["selected_index"] = index

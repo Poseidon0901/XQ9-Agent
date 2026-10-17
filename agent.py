@@ -17,6 +17,7 @@ from tools.commands import CommandHandler
 from tools.common_funcs import has_chinese
 from tools.config import CommandResult
 from tools.handler import ToolHandler
+from tools.logs import get_log_manager
 from tools.manage_memories import get_memory_manager
 
 if sys.platform == "win32":
@@ -68,26 +69,8 @@ class App:
 
         self.messages = []
 
-        self.init_log_files()
+        self.log_manager = get_log_manager()
         self.memory_manager = get_memory_manager()
-
-    def init_log_files(self):
-        self.log_dir = Path("logs")
-        self.log_dir.mkdir(exist_ok=True)
-
-        self.web_search_log = self.log_dir / f"web_search_{self.launch_timestamp}.log"
-        if not self.web_search_log.exists():
-            self.web_search_log.write_text(
-                f"# Web Search Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
-                encoding="utf-8"
-            )
-
-        self.open_url_log = self.log_dir / f"open_url_{self.launch_timestamp}.log"
-        if not self.open_url_log.exists():
-            self.open_url_log.write_text(
-                f"# Open URL Log\n# Created: {datetime.now():%Y-%m-%d %H:%M:%S}\n# {'='*70}\n\n",
-                encoding="utf-8"
-            )
 
     def _extract_url_from_input(self, text: str) -> str | None:
         pattern = r'(?:https?://|www\.)[^\s\'"]+|[\w-]+\.(?:com|org|net|tw|jp|io|dev|ai|app)[^\s\'"]*'
