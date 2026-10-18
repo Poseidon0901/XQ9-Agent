@@ -338,7 +338,6 @@ def log(url: str, result: dict):
         content += "\n" + "-" * 50 + "\n"
         content += "CONTENT:\n"
         content += "-" * 50 + "\n"
-        content += content
         content += "\n" + "-" * 50 + "\n"
     else:
         content += "No content retrieved.\n"
