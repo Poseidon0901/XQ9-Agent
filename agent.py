@@ -15,6 +15,7 @@ from rich.markdown import Markdown
 from tools import TOOLS
 from tools.commands import CommandHandler
 from tools.common_funcs import has_chinese
+from tools.common_funcs import format_as_blockquote
 from tools.config import CommandResult
 from tools.handler import ToolHandler
 from tools.logs import get_log_manager
@@ -203,13 +204,13 @@ class App:
                                 )
                                 if reasoning:
                                     reasoning_content += reasoning
-                                    live.update(Markdown(f"*Thinking...*\n\n> {reasoning_content}"))
+                                    live.update(Markdown(f"*Thinking...*\n\n{format_as_blockquote(reasoning_content)}"))
                                 if delta.content:
                                     full_content += delta.content
                                     if reasoning_content:
                                         live.update(
                                             Markdown(
-                                                f"*Thinking...*\n\n> {reasoning_content}\n\n{full_content}"
+                                                f"*Thinking...*\n\n{format_as_blockquote(reasoning_content)}\n\n{full_content}"
                                             )
                                         )
                                     else:
