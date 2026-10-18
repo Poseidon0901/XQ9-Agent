@@ -256,7 +256,6 @@ class App:
                             {
                                 "role": "assistant",
                                 "content": full_content,
-                                "reasoning_content": reasoning_content,
                             }
                         )
                         break
@@ -277,7 +276,6 @@ class App:
                         {
                             "role": "assistant",
                             "content": full_content or "",
-                            "reasoning_content": reasoning_content or "",
                             "tool_calls": formatted_tool_calls,
                         }
                     )
