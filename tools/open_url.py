@@ -11,15 +11,46 @@ from tools.common_funcs import get_domain
 from tools.logs import get_log_manager
 
 TRUSTED_DOMAINS = {
-    "github.com", "gitlab.com", "bitbucket.org", "stackoverflow.com",
-    "stackexchange.com", "reddit.com", "medium.com", "dev.to",
-    "wikipedia.org", "wikimedia.org", "archive.org", "gov", "edu",
-    "mozilla.org", "python.org", "pypi.org", "npmjs.com", "docker.com",
-    "kubernetes.io", "cnn.com", "bbc.com", "reuters.com", "ap.org",
-    "nytimes.com", "wsj.com", "bloomberg.com", "economist.com",
-    "nature.com", "science.org", "arxiv.org", "ieee.org", "acm.org",
-    "springer.com", "elsevier.com", "jstor.org", "google.com",
-    "youtube.com", "amazon.com", "microsoft.com", "apple.com",
+    "github.com",
+    "gitlab.com",
+    "bitbucket.org",
+    "stackoverflow.com",
+    "stackexchange.com",
+    "reddit.com",
+    "medium.com",
+    "dev.to",
+    "wikipedia.org",
+    "wikimedia.org",
+    "archive.org",
+    "gov",
+    "edu",
+    "mozilla.org",
+    "python.org",
+    "pypi.org",
+    "npmjs.com",
+    "docker.com",
+    "kubernetes.io",
+    "cnn.com",
+    "bbc.com",
+    "reuters.com",
+    "ap.org",
+    "nytimes.com",
+    "wsj.com",
+    "bloomberg.com",
+    "economist.com",
+    "nature.com",
+    "science.org",
+    "arxiv.org",
+    "ieee.org",
+    "acm.org",
+    "springer.com",
+    "elsevier.com",
+    "jstor.org",
+    "google.com",
+    "youtube.com",
+    "amazon.com",
+    "microsoft.com",
+    "apple.com",
 }
 
 TITLE_SUSPICIOUS_PATTERNS = {
@@ -70,14 +101,28 @@ HIGH_TRUST_TLDS = {".gov", ".edu", ".mil"}
 REDIRECT_SALE_SCORE = 20
 
 SUSPICIOUS_DOMAINS = {
-    "sedoparking.com": 20, "parkingcrew.net": 20, "parklogic.com": 20,
-    "domainparkingserver.com": 20, "parkingpage.com": 18,
-    "godaddy.com": 15, "namecheap.com": 12, "afternic.com": 18,
-    "dan.com": 18, "sedo.com": 18, "undeveloped.com": 18,
-    "bodis.com": 20, "above.com": 18, "internettraffic.com": 18,
-    "domainmarket.com": 18, "buydomains.com": 18, "hugedomains.com": 18,
-    "namebright.com": 15, "epik.com": 15, "dynadot.com": 15,
-    "googlesyndication.com": 10, "doubleclick.net": 10,
+    "sedoparking.com": 20,
+    "parkingcrew.net": 20,
+    "parklogic.com": 20,
+    "domainparkingserver.com": 20,
+    "parkingpage.com": 18,
+    "godaddy.com": 15,
+    "namecheap.com": 12,
+    "afternic.com": 18,
+    "dan.com": 18,
+    "sedo.com": 18,
+    "undeveloped.com": 18,
+    "bodis.com": 20,
+    "above.com": 18,
+    "internettraffic.com": 18,
+    "domainmarket.com": 18,
+    "buydomains.com": 18,
+    "hugedomains.com": 18,
+    "namebright.com": 15,
+    "epik.com": 15,
+    "dynadot.com": 15,
+    "googlesyndication.com": 10,
+    "doubleclick.net": 10,
 }
 
 SUSPICIOUS_THRESHOLD = 25
@@ -111,9 +156,7 @@ log_manager = get_log_manager()
 def detect_html_redirect(html: str, base_url: str) -> str | None:
     soup = BeautifulSoup(html, "html.parser")
 
-    meta_refresh = soup.find(
-        "meta", attrs={"http-equiv": re.compile(r"refresh", re.IGNORECASE)}
-    )
+    meta_refresh = soup.find("meta", attrs={"http-equiv": re.compile(r"refresh", re.IGNORECASE)})
     if meta_refresh:
         content = meta_refresh.get("content", "")
         match = re.search(r'url\s*=\s*[\'"]?([^\'";]+)', content, re.IGNORECASE)
@@ -177,9 +220,7 @@ def calculate_suspicious_score(
 
     if sale_provider is None:
         for suspicious_domain, score in SUSPICIOUS_DOMAINS.items():
-            if domain_lower == suspicious_domain or domain_lower.endswith(
-                f".{suspicious_domain}"
-            ):
+            if domain_lower == suspicious_domain or domain_lower.endswith(f".{suspicious_domain}"):
                 total_score += score
                 details.append(
                     f"Suspicious domain '{domain}' matches '{suspicious_domain}': +{score}"
@@ -188,15 +229,10 @@ def calculate_suspicious_score(
 
     if original_domain != domain_lower:
         redirected_to_sale = any(
-            domain_lower == sd or domain_lower.endswith(f".{sd}")
-            for sd in DOMAIN_SALE_PATTERNS
+            domain_lower == sd or domain_lower.endswith(f".{sd}") for sd in DOMAIN_SALE_PATTERNS
         )
-        redirected_to_suspicious = (
-            not redirected_to_sale
-            and any(
-                domain_lower == sd or domain_lower.endswith(f".{sd}")
-                for sd in SUSPICIOUS_DOMAINS
-            )
+        redirected_to_suspicious = not redirected_to_sale and any(
+            domain_lower == sd or domain_lower.endswith(f".{sd}") for sd in SUSPICIOUS_DOMAINS
         )
         if redirected_to_sale:
             total_score += REDIRECT_SALE_SCORE
@@ -227,7 +263,10 @@ def calculate_suspicious_score(
                 break
 
     for pattern, score in (
-        (r"parking", 5), (r"forsale", 8), (r"buydomain", 8), (r"domainsale", 8),
+        (r"parking", 5),
+        (r"forsale", 8),
+        (r"buydomain", 8),
+        (r"domainsale", 8),
     ):
         if re.search(pattern, url_lower):
             total_score += score
@@ -259,7 +298,8 @@ def _detect_challenge(html: str, status_code: int) -> bool:
 def _log(url: str, result: dict) -> None:
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = [
-        "", "=" * 70,
+        "",
+        "=" * 70,
         f"[{ts}] OPEN URL: {url}",
         "=" * 70,
         f"Status: {result.get('status', 'unknown')}",
@@ -344,23 +384,20 @@ def open_url(
         if response.status_code >= 400:
             if _detect_challenge(response.text, response.status_code):
                 console.print(
-                    f"[red]Blocked by anti-bot challenge[/red] "
-                    f"(HTTP {response.status_code})"
+                    f"[red]Blocked by anti-bot challenge[/red] (HTTP {response.status_code})"
                 )
                 result = {
                     "url": original_url,
                     "final_url": response.url,
                     "error": "Blocked by anti-bot JS challenge (Cloudflare-like). "
-                             "Try an alternative source; retrying the same URL will not help.",
+                    "Try an alternative source; retrying the same URL will not help.",
                     "content": "",
                     "status": "blocked",
                 }
                 _log(original_url, result)
                 return result
 
-            console.print(
-                f"[red]HTTP {response.status_code}:[/red] {response.text[:100]}"
-            )
+            console.print(f"[red]HTTP {response.status_code}:[/red] {response.text[:100]}")
             result = {
                 "url": original_url,
                 "final_url": response.url,
@@ -389,9 +426,7 @@ def open_url(
                     console.print(f"[red]Redirect loop detected:[/red] {redirect_url}")
                 break
 
-            console.print(
-                f"[dim]HTML redirect detected:[/dim] {response.url} → {redirect_url}"
-            )
+            console.print(f"[dim]HTML redirect detected:[/dim] {response.url} → {redirect_url}")
             redirect_chain.append(redirect_url)
 
             try:
@@ -403,14 +438,13 @@ def open_url(
             if response.status_code >= 400:
                 if _detect_challenge(response.text, response.status_code):
                     console.print(
-                        f"[red]Blocked by anti-bot challenge[/red] "
-                        f"(HTTP {response.status_code})"
+                        f"[red]Blocked by anti-bot challenge[/red] (HTTP {response.status_code})"
                     )
                     result = {
                         "url": original_url,
                         "final_url": response.url,
                         "error": "Blocked by anti-bot JS challenge (Cloudflare-like). "
-                                 "Try an alternative source.",
+                        "Try an alternative source.",
                         "content": "",
                         "status": "blocked",
                     }
@@ -441,20 +475,16 @@ def open_url(
         for detail in score_details:
             console.print(f"[dim]  {detail}[/dim]")
 
-        threshold = (
-            TRUSTED_SUSPICIOUS_THRESHOLD if final_domain_trusted
-            else SUSPICIOUS_THRESHOLD
-        )
+        threshold = TRUSTED_SUSPICIOUS_THRESHOLD if final_domain_trusted else SUSPICIOUS_THRESHOLD
         if suspicious_score >= threshold:
             console.print(
-                f"[red]Domain parking detected:[/red] "
-                f"Score {suspicious_score} >= {threshold}"
+                f"[red]Domain parking detected:[/red] Score {suspicious_score} >= {threshold}"
             )
             result = {
                 "url": original_url,
                 "final_url": final_url,
                 "error": f"This appears to be a domain parking/sale page "
-                         f"(score: {suspicious_score})",
+                f"(score: {suspicious_score})",
                 "content": "",
                 "status": "parking",
                 "suspicious_score": suspicious_score,
@@ -465,8 +495,7 @@ def open_url(
 
         if suspicious_score >= SAFE_THRESHOLD and not final_domain_trusted:
             console.print(
-                f"[yellow]Page has some suspicious indicators:[/yellow] "
-                f"Score {suspicious_score}"
+                f"[yellow]Page has some suspicious indicators:[/yellow] Score {suspicious_score}"
             )
         else:
             console.print(f"[green]Page appears safe:[/green] Score {suspicious_score}")
@@ -498,13 +527,11 @@ def open_url(
 
     except requests.exceptions.Timeout:
         console.print("[red]Timeout[/red]")
-        result = {"url": original_url, "error": "Timeout",
-                  "content": "", "status": "timeout"}
+        result = {"url": original_url, "error": "Timeout", "content": "", "status": "timeout"}
         _log(original_url, result)
         return result
     except Exception as e:
         console.print(f"[red]Open URL failed:[/red] {e!s}")
-        result = {"url": original_url, "error": str(e),
-                  "content": "", "status": "error"}
+        result = {"url": original_url, "error": str(e), "content": "", "status": "error"}
         _log(original_url, result)
         return result
