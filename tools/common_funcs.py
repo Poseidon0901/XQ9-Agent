@@ -32,6 +32,7 @@ def has_chinese(text: str) -> bool:
         return False
     return bool(re.search(r"[\u4e00-\u9fff\u3100-\u312f]", text))
 
+
 def format_as_blockquote(text: str) -> str:
     lines = text.split("\n")
     return "\n".join(f"> {line}" if line else ">" for line in lines)
