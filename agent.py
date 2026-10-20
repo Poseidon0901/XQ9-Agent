@@ -68,6 +68,7 @@ class App:
         self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.txt").read_text(
             encoding="utf-8"
         )
+        self.system_message_pending = False
 
         self.messages = []
 
@@ -95,6 +96,19 @@ class App:
                 if is_chinese_present
                 else self.system_message_en_us_no_tools
             )
+
+    def update_system_prompt(self, is_chinese_present: bool):
+        system_prompt = self.get_system_prompt(is_chinese_present)
+
+        if not self.messages:
+            self.messages.append({"role": "system", "content": system_prompt})
+        else:
+            self.messages[0] = {"role": "system", "content": system_prompt}
+
+        self.system_message_pending = False
+
+    def is_system_prompt_existing(self):
+        return bool(self.messages and self.messages[0]["role"] == "system")
 
     def _cleanup_old_messages(self):
         if len(self.messages) <= 20:
@@ -126,11 +140,12 @@ class App:
 
                 if user_input.lower().startswith("/"):
                     result = self.command_handler.execute(user_input)
-
                     if result == CommandResult.BREAK:
                         break
                     elif result == CommandResult.CONTINUE:
                         continue
+
+                self.tool_handler.reset_turn_counters()
 
                 extracted_url = self._extract_url_from_input(user_input)
                 if extracted_url:
@@ -139,16 +154,11 @@ class App:
 
                 if self.use_system_prompt:
                     is_chinese_present = has_chinese(user_input)
-                    system_prompt = self.get_system_prompt(is_chinese_present)
 
                     system_prompt_changed = False
 
-                    if not self.messages:
-                        self.messages.append({"role": "system", "content": system_prompt})
-                        system_prompt_changed = True
-
-                    elif self.messages[0].get("status") == "waiting for new system prompt":
-                        self.messages[0] = {"role": "system", "content": system_prompt}
+                    if not self.messages or self.system_message_pending:
+                        self.update_system_prompt(is_chinese_present)
                         system_prompt_changed = True
 
                     if system_prompt_changed:

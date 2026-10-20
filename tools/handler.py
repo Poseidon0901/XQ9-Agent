@@ -1,14 +1,20 @@
+from collections import deque
 from typing import Any
 
 from tools import manage_files, manage_memories, open_url, run_python, web_search
 from tools.config import (
+    MAX_FILE_CALLS,
     MAX_FORMATTED_RESULTS_LENGTH,
+    MAX_MEMORY_CALLS,
     MAX_OPEN_URL_CALLS,
+    MAX_RUN_PYTHON_CALLS,
     MAX_SEARCH_CALLS,
     MAX_SEARCH_RESULTS_KEPT,
     MAX_SNIPPET_LENGTH,
     MAX_TOTAL_TOOL_CALLS,
 )
+
+SEARCHED_QUERIES_MAXLEN = 50
 
 
 class ToolHandler:
@@ -22,26 +28,44 @@ class ToolHandler:
             "manage_files": self.handle_manage_files,
         }
 
-        self.max_search_calls = MAX_SEARCH_CALLS
-        self.max_open_url_calls = MAX_OPEN_URL_CALLS
-        self.max_total_tool_calls = MAX_TOTAL_TOOL_CALLS
+        self.tool_limits = {
+            "web_search": MAX_SEARCH_CALLS,
+            "open_url_by_index": MAX_OPEN_URL_CALLS,
+            "run_python": MAX_RUN_PYTHON_CALLS,
+            "manage_memories": MAX_MEMORY_CALLS,
+            "manage_files": MAX_FILE_CALLS,
+        }
 
-        self.search_calls = 0
-        self.open_url_calls = 0
+        self.searched_queries: deque[str] = deque(maxlen=SEARCHED_QUERIES_MAXLEN)
+        self.reset_turn_counters()
+
+    def reset_turn_counters(self):
         self.total_tool_calls = 0
+        self.tool_counts = {name: 0 for name in self.tool_limits}
 
-        self.searched_queries = set()
+    def reset_counters(self):
+        self.reset_turn_counters()
+        self.searched_queries.clear()
 
     def execute(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
-        if self.total_tool_calls >= self.max_total_tool_calls:
-            return {
-                "error": "Maximum total tool calls reached. Please answer using the information already available."
-            }
-
         handler = self.handlers.get(name)
         if not handler:
             return {"error": f"Unknown function: {name}"}
 
+        limit = self.tool_limits.get(name)
+        if limit is not None and self.tool_counts[name] >= limit:
+            return {
+                "error": f"{name} limit reached for this turn ({limit}). "
+                "Use the information you already have."
+            }
+
+        if self.total_tool_calls >= MAX_TOTAL_TOOL_CALLS:
+            return {
+                "error": f"Maximum total tool calls reached for this turn "
+                f"({MAX_TOTAL_TOOL_CALLS}). Answer using existing information."
+            }
+
+        self.tool_counts[name] += 1
         self.total_tool_calls += 1
 
         try:
@@ -51,7 +75,6 @@ class ToolHandler:
 
     def handle_web_search(self, args: dict[str, Any]) -> dict[str, Any]:
         query = args.get("query", "").strip()
-
         if not query:
             return {"error": "Search query cannot be empty"}
 
@@ -59,14 +82,10 @@ class ToolHandler:
         if query_key in self.searched_queries:
             return {
                 "error": "You have already executed this search query. "
-                "Do not repeat searches. Please answer the user using existing search results."
+                "Do not repeat searches."
             }
 
-        if self.search_calls >= self.max_search_calls:
-            return {"error": "Search limit reached."}
-
-        self.searched_queries.add(query_key)
-        self.search_calls += 1
+        self.searched_queries.append(query_key)
 
         self.app.console.print(f"[yellow]Searching:[/yellow] {query}")
         search_result = web_search(
@@ -88,7 +107,9 @@ class ToolHandler:
                 short_title = r.get("title", "")[:60]
                 if len(r.get("title", "")) > 60:
                     short_title += "..."
-                self.app.console.print(f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]")
+                self.app.console.print(
+                    f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]"
+                )
 
         formatted_results = self._format_search_results(compressed_results, query)
 
@@ -107,20 +128,21 @@ class ToolHandler:
         except (ValueError, TypeError):
             return {"error": f"Invalid index: {index}. Please submit an integer."}
 
-        if self.open_url_calls >= self.max_open_url_calls:
-            return {"error": "open_url_by_index limit reached."}
-
         if not self.app.last_search_results:
-            return {"error": "No available results. Please run web_search first.", "content": ""}
+            return {
+                "error": "No available results. Please run web_search first.",
+                "content": "",
+            }
 
         if index < 1 or index > len(self.app.last_search_results):
             return {
-                "error": f"Index {index} out of range. Valid range: 1-{len(self.app.last_search_results)}",
+                "error": (
+                    f"Index {index} out of range. "
+                    f"Valid range: 1-{len(self.app.last_search_results)}"
+                ),
                 "content": "",
                 "available_indices": list(range(1, len(self.app.last_search_results) + 1)),
             }
-
-        self.open_url_calls += 1
 
         selected_result = self.app.last_search_results[index - 1]
         url = selected_result.get("url")
@@ -149,7 +171,7 @@ class ToolHandler:
         operation = args.get("operation", "")
         limit = args.get("limit", 20)
 
-        result = manage_memories(
+        return manage_memories(
             operation=operation,
             content=args.get("content"),
             memory_id=args.get("memory_id"),
@@ -160,13 +182,11 @@ class ToolHandler:
             limit=limit,
         )
 
-        return result
-
     def handle_manage_files(self, args: dict[str, Any]) -> dict[str, Any]:
         operation = args.get("operation", "")
         limit = args.get("limit", 20)
 
-        result = manage_files(
+        return manage_files(
             operation=operation,
             file_path=args.get("file_path"),
             content=args.get("content"),
@@ -176,9 +196,7 @@ class ToolHandler:
             console=self.app.console,
             limit=limit,
         )
-
-        return result
-
+    
     def _compress_results(self, results: list) -> list:
         compressed = []
         for r in results[:MAX_SEARCH_RESULTS_KEPT]:
@@ -210,7 +228,10 @@ class ToolHandler:
             formatted += f"Index: {i}\n\n"
 
         if len(results) > MAX_SEARCH_RESULTS_KEPT:
-            formatted += f"\n*({len(results) - MAX_SEARCH_RESULTS_KEPT} more results are available via index lookup.)*\n"
+            formatted += (
+                f"\n*({len(results) - MAX_SEARCH_RESULTS_KEPT} more results "
+                "are available via index lookup.)*\n"
+            )
 
         formatted += "\n**Use open_url_by_index(index) to retrieve full content.**\n"
         formatted += f"**Valid index range: 1-{len(results)}**"
@@ -237,9 +258,3 @@ class ToolHandler:
         self.app.console.print(
             f"[dim]Use index {len(self.app.last_search_results)} to open it.[/dim]"
         )
-
-    def reset_counters(self):
-        self.search_calls = 0
-        self.open_url_calls = 0
-        self.total_tool_calls = 0
-        self.searched_queries.clear()

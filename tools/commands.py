@@ -16,6 +16,7 @@ class CommandHandler:
         self.app_instance.messages = []
         self.app_instance.last_search_results = []
         self.app_instance.last_search_query = ""
+        self.app_instance.system_message_pending = False
         self.app_instance.tool_handler.reset_counters()
         self.app_instance.console.print("[yellow]Conversation history cleared.[/yellow]")
         return CommandResult.CONTINUE
@@ -67,13 +68,12 @@ class CommandHandler:
         self.app_instance.use_system_prompt = not self.app_instance.use_system_prompt
 
         if self.app_instance.use_system_prompt:
-            if not self.app_instance.messages or self.app_instance.messages[0]["role"] != "system":
-                self.app_instance.messages.insert(
-                    0, {"role": "system", "status": "waiting for new system prompt", "content": ""}
-                )
+            if not self.app_instance.is_system_prompt_existing():
+                self.app_instance.system_message_pending = True
         else:
-            if self.app_instance.messages and self.app_instance.messages[0]["role"] == "system":
+            if self.app_instance.is_system_prompt_existing():
                 self.app_instance.messages.pop(0)
+                self.app_instance.system_message_pending = False
 
         status = "enabled" if self.app_instance.use_system_prompt else "disabled"
         self.app_instance.console.print(f"[yellow]System prompt {status}.[/yellow]")
