@@ -60,12 +60,12 @@ class App:
         self.tool_handler = ToolHandler(self)
         self.command_handler = CommandHandler(self)
 
-        self.system_message_zh_tw = Path("system_prompt_zh_tw.txt").read_text(encoding="utf-8")
-        self.system_message_en_us = Path("system_prompt_en_us.txt").read_text(encoding="utf-8")
-        self.system_message_zh_tw_no_tools = Path("system_prompt_zh_tw_no_tools.txt").read_text(
+        self.system_message_zh_tw = Path("system_prompt_zh_tw.md").read_text(encoding="utf-8")
+        self.system_message_en_us = Path("system_prompt_en_us.md").read_text(encoding="utf-8")
+        self.system_message_zh_tw_no_tools = Path("system_prompt_zh_tw_no_tools.md").read_text(
             encoding="utf-8"
         )
-        self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.txt").read_text(
+        self.system_message_en_us_no_tools = Path("system_prompt_en_us_no_tools.md").read_text(
             encoding="utf-8"
         )
         self.system_message_pending = False
