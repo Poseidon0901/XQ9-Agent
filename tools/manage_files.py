@@ -5,7 +5,16 @@ from typing import Any
 
 from rich.console import Console
 
-from tools.config import FILE_ROOT_DIR, MAX_FILE_LIMIT
+from tools.config import FILE_ROOT_DIR, MAX_FILE_LIMIT, FileOperation
+
+
+def _safe_print(console: Console | None, *args, **kwargs) -> None:
+    if not console:
+        return
+    try:
+        console.print(*args, **kwargs)
+    except Exception:
+        pass
 
 
 class FileManager:
@@ -229,97 +238,95 @@ def get_file_manager() -> FileManager:
 
 
 def manage_files(
-    operation: str,
+    operation: FileOperation | str,
     file_path: str | None = None,
     content: str | None = None,
-    date: str | None = None,
-    time: str | None = None,
-    keyword: str | None = None,
     console: Console | None = None,
     limit: int = 20,
 ) -> dict[str, Any]:
     manager = get_file_manager()
-    operation = operation.lower().strip()
-
-    if console:
-        console.print(
-            "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]"
-        )
-        console.print(
-            "[bold cyan]║           📁 FILE OPERATION - PARAMETERS                     ║[/bold cyan]"
-        )
-        console.print(
-            "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]"
-        )
-        console.print(f"[bold yellow]Operation:[/bold yellow] {operation}")
-        console.print(
-            f"[bold yellow]File path:[/bold yellow] {file_path if file_path else '(None)'}"
-        )
-        console.print(
-            f"[bold yellow]Content:[/bold yellow] "
-            f"{repr(content[:80]) + '...' if content and len(content) > 80 else repr(content)}"
-        )
-        console.print(f"[bold yellow]Limit:[/bold yellow] {limit}")
-        console.print("[dim]─" * 60 + "[/dim]\n")
 
     try:
-        if operation == "create":
-            result = manager.create_file(content=content, file_path=file_path)
+        op = FileOperation(str(operation).strip().lower())
+    except (ValueError, AttributeError):
+        supported = ", ".join(o.value for o in FileOperation)
+        err_msg = f"Unknown operation: '{operation}'. Supported operations: {supported}"
+        _safe_print(console, f"[red]✗ {err_msg}[/red]")
+        return {"success": False, "error": err_msg}
 
-        elif operation == "read":
-            if not file_path:
-                return {
-                    "success": False,
-                    "error": "file_path is required for read operation",
-                }
-            result = manager.read_file(file_path)
+    _safe_print(
+        console,
+        "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]",
+    )
+    _safe_print(
+        console,
+        "[bold cyan]║           📁 FILE OPERATION - PARAMETERS                     ║[/bold cyan]",
+    )
+    _safe_print(
+        console,
+        "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]",
+    )
+    _safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
+    _safe_print(
+        console,
+        f"[bold yellow]File path:[/bold yellow] {file_path if file_path else '(None)'}",
+    )
+    _safe_print(
+        console,
+        f"[bold yellow]Content:[/bold yellow] "
+        f"{repr(content[:80]) + '...' if content and len(content) > 80 else repr(content)}",
+    )
+    _safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
+    _safe_print(console, "[dim]─" * 60 + "[/dim]\n")
 
-        elif operation == "update":
-            if not file_path:
-                return {
-                    "success": False,
-                    "error": "file_path is required for update operation",
-                }
-            result = manager.update_file(file_path, content)
+    try:
+        match op:
+            case FileOperation.CREATE:
+                result = manager.create_file(content=content, file_path=file_path)
 
-        elif operation == "delete":
-            if not file_path:
-                return {
-                    "success": False,
-                    "error": "file_path is required for delete operation",
-                }
-            result = manager.delete_file(file_path)
+            case FileOperation.READ:
+                if not file_path:
+                    return {
+                        "success": False,
+                        "error": "file_path is required for read operation",
+                    }
+                result = manager.read_file(file_path)
 
-        elif operation == "list":
-            result = manager.list_files(directory=file_path, limit=limit)
+            case FileOperation.UPDATE:
+                if not file_path:
+                    return {
+                        "success": False,
+                        "error": "file_path is required for update operation",
+                    }
+                result = manager.update_file(file_path, content)
 
-        elif operation == "clear_all":
-            result = manager.clear_all(directory=file_path)
+            case FileOperation.DELETE:
+                if not file_path:
+                    return {
+                        "success": False,
+                        "error": "file_path is required for delete operation",
+                    }
+                result = manager.delete_file(file_path)
 
-        else:
-            return {
-                "success": False,
-                "error": (
-                    f"Unknown operation: {operation}. "
-                    "Supported: create, read, update, delete, list, clear_all"
-                ),
-            }
+            case FileOperation.LIST:
+                result = manager.list_files(directory=file_path, limit=limit)
+
+            case FileOperation.CLEAR_ALL:
+                result = manager.clear_all(directory=file_path)
 
     except Exception as e:
-        if console:
-            console.print(f"[red]✗ File operation failed:[/red] {e}")
+        _safe_print(console, f"[red]✗ File operation failed:[/red] {e}")
         return {"success": False, "error": f"File operation failed: {e}"}
 
-    if console:
-        if result.get("success"):
-            console.print(f"[green]✓ {result.get('message', 'OK')}[/green]")
-            if "file" in result and "content" in result["file"]:
-                preview = result["file"]["content"][:200]
-                console.print(f"[dim]  Content preview: {preview}[/dim]")
-            elif "entries" in result:
-                for e in result["entries"]:
-                    console.print(f"[dim]  [{e['type']}] {e['name']} ({e['size']} bytes)[/dim]")
-        else:
-            console.print(f"[red]✗ {result.get('error')}[/red]")
+    if result.get("success"):
+        _safe_print(console, f"[green]✓ {result.get('message', 'OK')}[/green]")
+        if "file" in result and "content" in result["file"]:
+            preview = result["file"]["content"][:200]
+            _safe_print(console, f"[dim]  Content preview: {preview}[/dim]")
+        elif "entries" in result:
+            for e in result["entries"]:
+                _safe_print(console, f"[dim]  [{e['type']}] {e['name']} ({e['size']} bytes)[/dim]")
+    else:
+        _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
 
     return result

@@ -80,10 +80,7 @@ class ToolHandler:
 
         query_key = query.lower()
         if query_key in self.searched_queries:
-            return {
-                "error": "You have already executed this search query. "
-                "Do not repeat searches."
-            }
+            return {"error": "You have already executed this search query. Do not repeat searches."}
 
         self.searched_queries.append(query_key)
 
@@ -107,9 +104,7 @@ class ToolHandler:
                 short_title = r.get("title", "")[:60]
                 if len(r.get("title", "")) > 60:
                     short_title += "..."
-                self.app.console.print(
-                    f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]"
-                )
+                self.app.console.print(f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]")
 
         formatted_results = self._format_search_results(compressed_results, query)
 
@@ -190,13 +185,10 @@ class ToolHandler:
             operation=operation,
             file_path=args.get("file_path"),
             content=args.get("content"),
-            date=args.get("date"),
-            time=args.get("time"),
-            keyword=args.get("keyword"),
             console=self.app.console,
             limit=limit,
         )
-    
+
     def _compress_results(self, results: list) -> list:
         compressed = []
         for r in results[:MAX_SEARCH_RESULTS_KEPT]:
