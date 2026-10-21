@@ -5,7 +5,16 @@ from typing import Any
 
 from rich.console import Console
 
-from tools.config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH
+from tools.config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH, MemoryOperation
+
+
+def _safe_print(console: Console | None, *args, **kwargs) -> None:
+    if not console:
+        return
+    try:
+        console.print(*args, **kwargs)
+    except Exception:
+        pass
 
 
 class MemoryManager:
@@ -233,7 +242,7 @@ def get_memory_manager() -> MemoryManager:
 
 
 def manage_memories(
-    operation: str,
+    operation: MemoryOperation | str,
     content: str | None = None,
     memory_id: int | None = None,
     date: str | None = None,
@@ -244,65 +253,83 @@ def manage_memories(
 ) -> dict[str, Any]:
     manager = get_memory_manager()
 
-    operation = operation.lower().strip()
+    try:
+        op = MemoryOperation(str(operation).strip().lower())
+    except (ValueError, AttributeError):
+        supported = ", ".join(o.value for o in MemoryOperation)
+        err_msg = f"Unknown operation: '{operation}'. Supported operations: {supported}"
+        _safe_print(console, f"[red]✗ {err_msg}[/red]")
+        return {"success": False, "error": err_msg}
 
-    if console:
-        console.print(
-            "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]"
-        )
-        console.print(
-            "[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]"
-        )
-        console.print(
-            "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]"
-        )
-        console.print(f"[bold yellow]Operation:[/bold yellow] {operation}")
-        console.print(
-            f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}"
-        )
-        console.print(
-            f"[bold yellow]Memory ID:[/bold yellow] {memory_id if memory_id is not None else '(None)'}"
-        )
-        console.print(f"[bold yellow]Date:[/bold yellow] {date if date else '(None)'}")
-        console.print(f"[bold yellow]Time:[/bold yellow] {time if time else '(None)'}")
-        console.print(f"[bold yellow]Keyword:[/bold yellow] {keyword if keyword else '(None)'}")
-        console.print(f"[bold yellow]Limit:[/bold yellow] {limit}")
+    _safe_print(
+        console,
+        "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]",
+    )
+    _safe_print(
+        console,
+        "[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]",
+    )
+    _safe_print(
+        console,
+        "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]",
+    )
+    _safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
+    _safe_print(
+        console,
+        f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}",
+    )
+    _safe_print(
+        console,
+        f"[bold yellow]Memory ID:[/bold yellow] {memory_id if memory_id is not None else '(None)'}",
+    )
+    _safe_print(console, f"[bold yellow]Date:[/bold yellow] {date if date else '(None)'}")
+    _safe_print(console, f"[bold yellow]Time:[/bold yellow] {time if time else '(None)'}")
+    _safe_print(console, f"[bold yellow]Keyword:[/bold yellow] {keyword if keyword else '(None)'}")
+    _safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
 
-        console.print("[dim]─" * 60 + "[/dim]")
-        console.print("[bold]Parameter Types:[/bold]")
-        console.print(f"  operation: {type(operation).__name__}")
-        console.print(f"  content: {type(content).__name__ if content is not None else 'NoneType'}")
-        console.print(
-            f"  memory_id: {type(memory_id).__name__ if memory_id is not None else 'NoneType'}"
-        )
-        console.print(f"  date: {type(date).__name__ if date is not None else 'NoneType'}")
-        console.print(f"  time: {type(time).__name__ if time is not None else 'NoneType'}")
-        console.print(f"  keyword: {type(keyword).__name__ if keyword is not None else 'NoneType'}")
-        console.print("[dim]─" * 60 + "[/dim]\n")
+    _safe_print(console, "[dim]─" * 60 + "[/dim]")
+    _safe_print(console, "[bold]Parameter Types:[/bold]")
+    _safe_print(console, f"  operation: {type(operation).__name__} ({op.name})")
+    _safe_print(
+        console, f"  content: {type(content).__name__ if content is not None else 'NoneType'}"
+    )
+    _safe_print(
+        console,
+        f"  memory_id: {type(memory_id).__name__ if memory_id is not None else 'NoneType'}",
+    )
+    _safe_print(console, f"  date: {type(date).__name__ if date is not None else 'NoneType'}")
+    _safe_print(console, f"  time: {type(time).__name__ if time is not None else 'NoneType'}")
+    _safe_print(
+        console, f"  keyword: {type(keyword).__name__ if keyword is not None else 'NoneType'}"
+    )
+    _safe_print(console, "[dim]─" * 60 + "[/dim]\n")
 
-    if console:
-        console.print(f"[yellow]▶ Executing memory operation:[/yellow] {operation}")
+    _safe_print(console, f"[yellow]▶ Executing memory operation:[/yellow] {op.value}")
 
     try:
-        if operation == "create":
-            if console:
-                console.print(
-                    f"[dim]  content length: {len(content) if content else 0} characters[/dim]"
+        match op:
+            case MemoryOperation.CREATE:
+                _safe_print(
+                    console,
+                    f"[dim]  content length: {len(content) if content else 0} characters[/dim]",
                 )
-            result = manager.create_memory(content=content, date=date, time=time)
-            if console:
+                result = manager.create_memory(content=content, date=date, time=time)
                 if result.get("success"):
-                    console.print(f"[green]✓ Memory created:[/green] ID {result['memory']['id']}")
-                    console.print(f"[dim]  Content: {result['memory']['content'][:50]}...[/dim]")
-                    console.print(
-                        f"[dim]  Date/Time: {result['memory']['date']} {result['memory']['time']}[/dim]"
+                    _safe_print(
+                        console, f"[green]✓ Memory created:[/green] ID {result['memory']['id']}"
+                    )
+                    _safe_print(
+                        console, f"[dim]  Content: {result['memory']['content'][:50]}...[/dim]"
+                    )
+                    _safe_print(
+                        console,
+                        f"[dim]  Date/Time: {result['memory']['date']} {result['memory']['time']}[/dim]",
                     )
                 else:
-                    console.print(f"[red]✗ {result.get('error')}[/red]")
-            return result
+                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                return result
 
-        elif operation == "read":
-            if console:
+            case MemoryOperation.READ:
                 filters = []
                 if memory_id is not None:
                     filters.append(f"ID={memory_id}")
@@ -310,97 +337,89 @@ def manage_memories(
                     filters.append(f"date={date}")
                 if keyword:
                     filters.append(f"keyword={keyword}")
-                console.print(
-                    f"[dim]  Filters: {', '.join(filters) if filters else 'None (list all)'}[/dim]"
+                _safe_print(
+                    console,
+                    f"[dim]  Filters: {', '.join(filters) if filters else 'None (list all)'}[/dim]",
                 )
-            result = manager.read_memories(memory_id=memory_id, date=date, keyword=keyword)
-            if console:
+                result = manager.read_memories(memory_id=memory_id, date=date, keyword=keyword)
                 if result.get("memories"):
-                    console.print(f"[green]✓ Found {len(result['memories'])} memory(ies)[/green]")
+                    _safe_print(
+                        console, f"[green]✓ Found {len(result['memories'])} memory(ies)[/green]"
+                    )
                     for m in result["memories"]:
-                        console.print(
-                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content', '')[:50]}...[/dim]"
+                        _safe_print(
+                            console,
+                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content', '')[:50]}...[/dim]",
                         )
                 else:
-                    console.print("[dim]No memories found[/dim]")
-            return result
+                    _safe_print(console, "[dim]No memories found[/dim]")
+                return result
 
-        elif operation == "update":
-            if console:
-                console.print(f"[dim]  Updating memory ID: {memory_id}[/dim]")
-                console.print(
-                    f"[dim]  New content: {content[:50] + '...' if content and len(content) > 50 else content}[/dim]"
+            case MemoryOperation.UPDATE:
+                _safe_print(console, f"[dim]  Updating memory ID: {memory_id}[/dim]")
+                _safe_print(
+                    console,
+                    f"[dim]  New content: {content[:50] + '...' if content and len(content) > 50 else content}[/dim]",
                 )
-            if memory_id is None or isinstance(memory_id, bool):
-                return {"success": False, "error": "memory_id is required for update operation"}
-            try:
-                memory_id = int(memory_id)
-            except (TypeError, ValueError):
-                return {"success": False, "error": "memory_id must be an integer"}
-            if memory_id <= 0:
-                return {"success": False, "error": "memory_id must be a positive integer"}
-            if not isinstance(content, str) or not content.strip():
-                return {"success": False, "error": "Content is required for update operation"}
-            result = manager.update_memory(memory_id, content)
-            if console:
+                if memory_id is None or isinstance(memory_id, bool):
+                    return {"success": False, "error": "memory_id is required for update operation"}
+                try:
+                    memory_id = int(memory_id)
+                except (TypeError, ValueError):
+                    return {"success": False, "error": "memory_id must be an integer"}
+                if memory_id <= 0:
+                    return {"success": False, "error": "memory_id must be a positive integer"}
+                if not isinstance(content, str) or not content.strip():
+                    return {"success": False, "error": "Content is required for update operation"}
+                result = manager.update_memory(memory_id, content)
                 if result.get("success"):
-                    console.print(f"[green]✓ Memory {memory_id} updated[/green]")
-                    console.print(
-                        f"[dim]  New content: {result['memory']['content'][:50]}...[/dim]"
+                    _safe_print(console, f"[green]✓ Memory {memory_id} updated[/green]")
+                    _safe_print(
+                        console,
+                        f"[dim]  New content: {result['memory']['content'][:50]}...[/dim]",
                     )
                 else:
-                    console.print(f"[red]✗ {result.get('error')}[/red]")
-            return result
+                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                return result
 
-        elif operation == "delete":
-            if console:
-                console.print(f"[dim]  Deleting memory ID: {memory_id}[/dim]")
-            if not memory_id:
-                return {"success": False, "error": "memory_id is required for delete operation"}
-            result = manager.delete_memory(memory_id)
-            if console:
+            case MemoryOperation.DELETE:
+                _safe_print(console, f"[dim]  Deleting memory ID: {memory_id}[/dim]")
+                if not memory_id:
+                    return {"success": False, "error": "memory_id is required for delete operation"}
+                result = manager.delete_memory(memory_id)
                 if result.get("success"):
-                    console.print(f"[green]✓ Memory {memory_id} deleted[/green]")
+                    _safe_print(console, f"[green]✓ Memory {memory_id} deleted[/green]")
                 else:
-                    console.print(f"[red]✗ {result.get('error')}[/red]")
-            return result
+                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                return result
 
-        elif operation == "clear_all":
-            if console:
-                console.print("[yellow]⚠️  Clearing ALL memories![/yellow]")
-            result = manager.clear_all_memories()
-            if console:
-                console.print(f"[green]✓ {result.get('message')}[/green]")
-            return result
+            case MemoryOperation.CLEAR_ALL:
+                _safe_print(console, "[yellow]⚠️  Clearing ALL memories![/yellow]")
+                result = manager.clear_all_memories()
+                _safe_print(console, f"[green]✓ {result.get('message')}[/green]")
+                return result
 
-        elif operation == "list":
-            if console:
-                console.print(f"[dim]  Limit: {limit} (showing most recent)[/dim]")
-            result = manager.list_memories(limit)
-            if console:
+            case MemoryOperation.LIST:
+                _safe_print(console, f"[dim]  Limit: {limit} (showing most recent)[/dim]")
+                result = manager.list_memories(limit)
                 if result.get("memories"):
-                    console.print(f"[green]✓ Found {result.get('total', 0)} memories[/green]")
+                    _safe_print(
+                        console, f"[green]✓ Found {result.get('total', 0)} memories[/green]"
+                    )
                     for m in result["memories"]:
-                        console.print(
-                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content_preview')}[/dim]"
+                        _safe_print(
+                            console,
+                            f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content_preview')}[/dim]",
                         )
                     if result.get("total", 0) > len(result.get("memories", [])):
-                        console.print(
-                            f"[dim]  ... and {result.get('total', 0) - len(result.get('memories', []))} more[/dim]"
+                        _safe_print(
+                            console,
+                            f"[dim]  ... and {result.get('total', 0) - len(result.get('memories', []))} more[/dim]",
                         )
                 else:
-                    console.print("[dim]No memories found[/dim]")
-            return result
-
-        else:
-            if console:
-                console.print(f"[red]✗ Unknown operation: {operation}[/red]")
-            return {
-                "success": False,
-                "error": f"Unknown operation: {operation}. Supported: create, read, update, delete, list, clear_all",
-            }
+                    _safe_print(console, "[dim]No memories found[/dim]")
+                return result
 
     except Exception as e:
-        if console:
-            console.print(f"[red]✗ Memory operation failed:[/red] {e!s}")
+        _safe_print(console, f"[red]✗ Memory operation failed:[/red] {e!s}")
         return {"success": False, "error": f"Memory operation failed: {e!s}"}

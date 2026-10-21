@@ -230,7 +230,10 @@ def _search_duckduckgo_api(query: str, console: Console):
 
 
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
-    has_traditional = bool(re.search(r"[\u3400-\u4dbf\uFA0E-\uFA2F]", query))
+    has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
+    if not lang:
+        lang = "zh" if has_chinese else "en"
+    has_traditional = bool(re.search(r"[\u3400-\u4dbf\ufa0e-\ufa2f]", query))
 
     console.print(f"[dim]Wikipedia API search ({lang}):[/dim] {query}")
 
