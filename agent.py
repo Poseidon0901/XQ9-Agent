@@ -13,7 +13,7 @@ from rich.markdown import Markdown
 from tools import TOOLS
 from tools.commands import CommandHandler
 from tools.common_funcs import format_as_blockquote, has_chinese
-from tools.config import CommandResult, OPENAI_API_URL, OPENAI_API_KEY, MODEL
+from tools.config import MODEL, OPENAI_API_KEY, OPENAI_API_URL, CommandResult
 from tools.handler import ToolHandler
 from tools.logs import get_log_manager
 from tools.manage_memories import get_memory_manager

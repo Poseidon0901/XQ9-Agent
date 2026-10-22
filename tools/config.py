@@ -1,5 +1,6 @@
-from enum import Enum, StrEnum, auto
 import os
+from enum import Enum, StrEnum, auto
+
 from dotenv import load_dotenv
 
 load_dotenv()

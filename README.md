@@ -215,13 +215,13 @@ You can modify these in `tools/config.py`:
 
 ```python
 MAX_TOTAL_TOOL_CALLS = 30  # Max total tool calls per turn
-MAX_SEARCH_CALLS = 5       # Max web searches per turn
-MAX_OPEN_URL_CALLS = 10    # Max URL opens per turn
+MAX_SEARCH_CALLS = 5  # Max web searches per turn
+MAX_OPEN_URL_CALLS = 10  # Max URL opens per turn
 MAX_RUN_PYTHON_CALLS = 15  # Max Python executions per turn
-MAX_MEMORY_CALLS = 10      # Max memory operations per turn
-MAX_FILE_CALLS = 15        # Max file operations per turn
+MAX_MEMORY_CALLS = 10  # Max memory operations per turn
+MAX_FILE_CALLS = 15  # Max file operations per turn
 
-MAX_SNIPPET_LENGTH = 150   # Search snippet length
+MAX_SNIPPET_LENGTH = 150  # Search snippet length
 MAX_SEARCH_RESULTS_KEPT = 5  # Results to keep in context
 ```
 
