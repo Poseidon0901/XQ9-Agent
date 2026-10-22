@@ -55,12 +55,12 @@ An AI-powered agent interface built with Python that leverages tool calling to p
    Create a `.env` file in the project root with the following:
 
    ```env
-   API_KEY=your_api_key_here
-   API_URL=https://api.openai.com/v1
-   MODEL=gpt-4
+   OPENAI_API_KEY=your_api_key_here
+   OPENAI_API_URL=https://api.openai.com/v1
+   MODEL=gpt-6-luna
    ```
 
-   > **Note**: The API must support tool calling (function calling) and the `reasoning` parameter.
+   > **Note**: The API must support tool calling (function calling).
 
 ## 🎮 Usage
 
@@ -133,10 +133,10 @@ XQ9-Agent/
 ├── requirements.txt                    # Python dependencies
 ├── pyproject.toml                      # Linting and formatting config
 ├── .env.example                        # Example environment variables
-├── system_prompt_en_us.txt             # English system prompt (with tools)
-├── system_prompt_en_us_no_tools.txt    # English system prompt (no tools)
-├── system_prompt_zh_tw.txt             # Traditional Chinese system prompt (with tools)
-├── system_prompt_zh_tw_no_tools.txt    # Traditional Chinese system prompt (no tools)
+├── system_prompt_en_us.md              # English system prompt (with tools)
+├── system_prompt_en_us_no_tools.md     # English system prompt (no tools)
+├── system_prompt_zh_tw.md              # Traditional Chinese system prompt (with tools)
+├── system_prompt_zh_tw_no_tools.md     # Traditional Chinese system prompt (no tools)
 ├── tools/
 │   ├── __init__.py                     # Tool registry and function definitions
 │   ├── commands.py                     # CLI slash command handling
@@ -149,9 +149,6 @@ XQ9-Agent/
 │   ├── open_url.py                     # Web page fetcher with anti-bot and cleaning
 │   ├── run_python.py                   # Local Python execution
 │   └── web_search.py                   # Multi-engine search implementation
-├── playground/                         # Helper scripts for local LLMs
-│   ├── start-llama-server-*.ps1        # llama.cpp server startup scripts
-│   └── token_counter.py                # Token counter utility
 ├── agent_workspace/                    # Default workspace directory for files (auto-created)
 ├── logs/                               # Log files (auto-created)
 └── memories.db                         # Persistent SQLite memory database (auto-created)
@@ -205,9 +202,9 @@ All configuration is managed through environment variables in `.env`:
 
 | Variable | Description | Example |
 |----------|-------------|---------|
-| `API_KEY` | Your API authentication key | `sk-...` |
-| `API_URL` | The API endpoint URL | `https://api.openai.com/v1` |
-| `MODEL` | The model name to use | `gpt-4`, `gpt-3.5-turbo`, or custom model |
+| `OPENAI_API_KEY` | Your API authentication key | `sk-...` |
+| `OPENAI_API_URL` | The API endpoint URL | `https://api.openai.com/v1` |
+| `MODEL` | The model name to use | `gpt-6-luna` |
 
 ### Customization Constants
 
