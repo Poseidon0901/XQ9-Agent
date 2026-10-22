@@ -1,12 +1,10 @@
 import io
 import json
-import os
 import re
 import sys
 from datetime import datetime
 from pathlib import Path
 
-from dotenv import load_dotenv
 from openai import OpenAI
 from rich.console import Console
 from rich.live import Live
@@ -15,7 +13,7 @@ from rich.markdown import Markdown
 from tools import TOOLS
 from tools.commands import CommandHandler
 from tools.common_funcs import format_as_blockquote, has_chinese
-from tools.config import CommandResult
+from tools.config import CommandResult, OPENAI_API_URL, OPENAI_API_KEY, MODEL
 from tools.handler import ToolHandler
 from tools.logs import get_log_manager
 from tools.manage_memories import get_memory_manager
@@ -30,25 +28,19 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-load_dotenv()
-
-API_URL = os.getenv("API_URL")
-API_KEY = os.getenv("API_KEY")
-MODEL = os.getenv("MODEL")
-
-if API_URL:
-    print("API_URL =", repr(API_URL))
+if OPENAI_API_URL:
+    print("API_URL =", repr(OPENAI_API_URL))
 if MODEL:
     print("MODEL =", repr(MODEL))
-if API_KEY:
-    print(f"API_KEY = {f'{API_KEY[:10]}...' if len(API_KEY) > 10 else '***'}")
+if OPENAI_API_KEY:
+    print(f"API_KEY = {f'{OPENAI_API_KEY[:10]}...' if len(OPENAI_API_KEY) > 10 else '***'}")
 
 
 class App:
     def __init__(self):
         self.console = Console()
 
-        self.client = OpenAI(base_url=API_URL, api_key=API_KEY)
+        self.client = OpenAI(base_url=OPENAI_API_URL, api_key=OPENAI_API_KEY)
         self.launch_timestamp = datetime.now().strftime("%Y-%m-%d.%H.%M.%S")
 
         self.last_search_results = []
@@ -257,7 +249,7 @@ class App:
 
                         self.client.close()
 
-                        self.client = OpenAI(base_url=API_URL, api_key=API_KEY)
+                        self.client = OpenAI(base_url=OPENAI_API_URL, api_key=OPENAI_API_KEY)
 
                         self.console.print("\n[yellow]Generation interrupted.[/yellow]")
                         break
