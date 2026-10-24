@@ -1,4 +1,4 @@
-from .config import FileOperation, MemoryOperation
+from .config import FileOperation, MemoryOperation, SearchStrategy
 from .manage_files import get_file_manager, manage_files
 from .manage_memories import get_memory_manager, manage_memories
 from .open_url import open_url
@@ -24,12 +24,20 @@ TOOLS = [
         "function": {
             "name": "web_search",
             "description": (
-                "Search the internet for up-to-date information, current events, technical documentation, or unknown facts. "
-                "Returns an indexed list of search results containing 1-based index numbers, titles, URLs, and brief snippets.\n\n"
+                "Search the internet for up-to-date information, current events, "
+                "technical documentation, or unknown facts. "
+                "Returns an indexed list of search results containing 1-based "
+                "index numbers, titles, URLs, and brief snippets.\n\n"
                 "Usage Rules:\n"
-                "- Formulate queries targeting the direct answer concisely — do NOT search for intermediate info (e.g. today's date).\n"
-                "- Search results provide only brief snippets. After calling web_search, you MUST call open_url_by_index "
-                "using the result index number to read the full page content before providing the final answer to the user.\n"
+                "- Formulate queries targeting the direct answer concisely — "
+                "do NOT search for intermediate info (e.g. today's date).\n"
+                "- Use the 'auto' strategy for general web searches. "
+                "Use '_search_ddgs' for web search and '_search_wikipedia_api' "
+                "for encyclopedia-style information.\n"
+                "- Search results provide only brief snippets. After calling "
+                "web_search, you MUST call open_url_by_index using the result "
+                "index number to read the full page content before providing "
+                "the final answer to the user.\n"
                 "- Avoid repeated or duplicate searches."
             ),
             "parameters": {
@@ -37,8 +45,21 @@ TOOLS = [
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "The search query targeting the answer directly. Use concise keywords without filler words.",
-                    }
+                        "description": (
+                            "The search query targeting the answer directly. "
+                            "Use concise keywords without filler words."
+                        ),
+                    },
+                    "strategy": {
+                        "type": "string",
+                        "enum": [strategy.value for strategy in SearchStrategy],
+                        "description": (
+                            "Search strategy. Use 'auto' for general searches, "
+                            "'_search_ddgs' for web searches, or "
+                            "'_search_wikipedia_api' for encyclopedia information. "
+                            "Defaults to 'auto' when omitted."
+                        ),
+                    },
                 },
                 "required": ["query"],
             },
