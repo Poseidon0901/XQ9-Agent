@@ -12,6 +12,7 @@ from ddgs import DDGS
 from rich.console import Console
 
 from tools.common_funcs import get_domain, normalize_url
+from tools.config import SearchStrategy
 from tools.logs import get_log_manager
 
 SUSPICIOUS_KEYWORDS = {
@@ -32,7 +33,6 @@ log_manager = get_log_manager()
 def log(
     query: str,
     results: list,
-    log_file_path: Path,
     method: str | None = None,
     error: str | None = None,
     raw_data: Any | None = None,
@@ -118,7 +118,7 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
     return False
 
 
-def _search_duckduckgo_html(query: str, console: Console):
+def _search_ddgs(query: str, console: Console):
     results = []
     try:
         with DDGS() as ddgs:
@@ -143,91 +143,6 @@ def _search_duckduckgo_html(query: str, console: Console):
         "results": results,
         "_raw_data": {"source": "duckduckgo_official_package"},
     }
-
-
-def _search_duckduckgo_api(query: str, console: Console):
-    api_url = "https://api.duckduckgo.com/"
-    params = {"q": query, "format": "json", "no_html": 1, "skip_disambig": 1, "t": "llama_search"}
-
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
-    }
-
-    try:
-        response = requests.get(api_url, params=params, headers=headers, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as e:
-        raise ValueError(f"DuckDuckGo API request failed: {e!s}")
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON response from DuckDuckGo API: {e!s}")
-
-    if not data:
-        raise ValueError("Empty API response")
-
-    raw_data = data.copy()
-
-    if "raw" in raw_data:
-        del raw_data["raw"]
-
-    results = []
-    seen_urls = set()
-
-    if data.get("Abstract", ""):
-        url = data.get("AbstractURL", "")
-        url = normalize_url(url)
-        if url and url.startswith(("http://", "https://")) and url not in seen_urls:
-            seen_urls.add(url)
-            results.append(
-                {"title": data.get("Heading", query), "snippet": data["Abstract"][:500], "url": url}
-            )
-
-    for topic in data.get("RelatedTopics", []):
-        if "Result" not in topic:
-            continue
-
-        result_text = topic.get("Result", "")
-        soup = BeautifulSoup(result_text, "html.parser")
-
-        link_elem = soup.find("a")
-        if not link_elem:
-            continue
-
-        url = link_elem.get("href", "")
-        if not url or not url.startswith(("http://", "https://")):
-            continue
-
-        title = link_elem.get_text(strip=True)
-        if not title:
-            title = "No title"
-
-        snippet = soup.get_text(separator=" ", strip=True)
-        if snippet:
-            snippet = snippet.replace(title, "", 1).strip()
-
-        url = normalize_url(url)
-
-        if url in seen_urls:
-            continue
-        seen_urls.add(url)
-
-        if is_suspicious_result(title, snippet or "", url):
-            continue
-
-        results.append(
-            {"title": title, "snippet": snippet or "No description available", "url": url}
-        )
-
-        if len(results) >= 10:
-            break
-
-    if not results:
-        raise ValueError(
-            f"No relevant results from DuckDuckGo API. Raw data keys: {list(data.keys())}"
-        )
-
-    return {"query": query, "results": results, "_raw_data": raw_data}
-
 
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
     has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
@@ -339,61 +254,68 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
         console.print(f"[dim]Wikipedia API error: {e!s}[/dim]")
         raise ValueError(f"Wikipedia API error: {e!s}")
 
+SEARCH_STRATEGIES = {
+    SearchStrategy.DUCKDUCKGO_SEARCH: _search_ddgs,
+    SearchStrategy.WIKIPEDIA_API: _search_wikipedia_api,
+}
 
-def web_search(query: str, console: Console, launch_timestamp: str):
+def web_search(
+    query: str,
+    console: Console,
+    strategy: SearchStrategy = SearchStrategy.AUTO,
+) -> dict[str, Any]:
     console.print(f"[yellow]Searching the internet for:[/yellow] {query}")
 
-    has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
-
-    if has_chinese:
-        search_methods = [
-            _search_duckduckgo_html,
-            _search_wikipedia_api,
-        ]
-    else:
-        search_methods = [
-            _search_duckduckgo_html,
-            _search_wikipedia_api,
-            _search_duckduckgo_api,
-        ]
+    search_methods = (
+        list(SEARCH_STRATEGIES.values())
+        if strategy == SearchStrategy.AUTO
+        else [SEARCH_STRATEGIES[strategy]]
+    )
 
     results = []
     last_error = None
     successful_method = None
     raw_data = None
 
-    log_file_path = Path("logs") / f"web_search_{launch_timestamp}.log"
-
     for method in search_methods:
         try:
             console.print(f"[dim]Trying {method.__name__}...[/dim]")
             result = method(query, console=console)
 
-            if result and "_raw_data" in result:
-                raw_data = result["_raw_data"]
+            if not result or not result.get("results"):
+                console.print(
+                    f"[dim]{method.__name__} returned no results[/dim]"
+                )
+                continue
 
-            if result and result.get("results") and len(result["results"]) > 0:
-                results = result["results"]
-                successful_method = method.__name__
-                console.print(f"[green]✓ Search successful using:[/green] {successful_method}")
-                break
-            else:
-                console.print(f"[dim]{method.__name__} returned no results[/dim]")
+            results = result["results"]
+            raw_data = result.get("_raw_data")
+            successful_method = method.__name__
+
+            console.print(
+                f"[green]✓ Search successful using: "
+                f"{successful_method}[/green]"
+            )
+            break
+
         except Exception as e:
             last_error = str(e)
-            console.print(f"[dim]✗ {method.__name__} failed:[/dim] {e!s}")
-            continue
+            console.print(
+                f"[dim]✗ {method.__name__} failed: {e!s}[/dim]"
+            )
 
     if not results:
         error_msg = f"All search methods failed. Last error: {last_error}"
         console.print(f"[red]{error_msg}[/red]")
-        log(query, [], log_file_path, error=error_msg, raw_data=raw_data)
+        log(query, [], error=error_msg, raw_data=raw_data)
         return {"query": query, "error": error_msg, "results": []}
 
     filtered_results = []
     seen_urls = set()
+
     for r in results:
         url = normalize_url(r["url"])
+
         if url in seen_urls:
             continue
         seen_urls.add(url)
@@ -402,10 +324,12 @@ def web_search(query: str, console: Console, launch_timestamp: str):
             console.print(f"[dim]Skipping suspicious:[/dim] {url}")
             continue
 
+        snippet = r["snippet"]
+
         filtered_results.append(
             {
                 "title": r["title"],
-                "snippet": r["snippet"][:500] if len(r["snippet"]) > 500 else r["snippet"],
+                "snippet": snippet[:500],
                 "url": url,
             }
         )
@@ -413,12 +337,15 @@ def web_search(query: str, console: Console, launch_timestamp: str):
         if len(filtered_results) >= 10:
             break
 
-    final_result = {"query": query, "results": filtered_results, "method": successful_method}
+    final_result = {
+        "query": query,
+        "results": filtered_results,
+        "method": successful_method,
+    }
 
     log(
         query=query,
         results=filtered_results,
-        log_file_path=log_file_path,
         method=successful_method,
         raw_data=raw_data,
     )

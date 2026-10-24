@@ -12,6 +12,7 @@ from tools.config import (
     MAX_SEARCH_RESULTS_KEPT,
     MAX_SNIPPET_LENGTH,
     MAX_TOTAL_TOOL_CALLS,
+    SearchStrategy
 )
 
 SEARCHED_QUERIES_MAXLEN = 50
@@ -80,13 +81,21 @@ class ToolHandler:
 
         query_key = query.lower()
         if query_key in self.searched_queries:
-            return {"error": "You have already executed this search query. Do not repeat searches."}
+            return {
+                "error": "You have already executed this search query. "
+                "Do not repeat searches."
+            }
 
         self.searched_queries.append(query_key)
 
+        strategy = SearchStrategy(args.get("strategy", SearchStrategy.AUTO))
+
         self.app.console.print(f"[yellow]Searching:[/yellow] {query}")
+
         search_result = web_search(
-            query, console=self.app.console, launch_timestamp=self.app.launch_timestamp
+            query,
+            console=self.app.console,
+            strategy=strategy,
         )
 
         if search_result.get("error"):
@@ -99,59 +108,80 @@ class ToolHandler:
         self.app.last_search_query = query
 
         if results:
-            self.app.console.print(f"[green]Found {len(results)} search results[/green]")
+            self.app.console.print(
+                f"[green]Found {len(results)} search results[/green]"
+            )
             for i, r in enumerate(results[:3], 1):
                 short_title = r.get("title", "")[:60]
                 if len(r.get("title", "")) > 60:
                     short_title += "..."
-                self.app.console.print(f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]")
+                self.app.console.print(
+                    f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]"
+                )
 
-        formatted_results = self._format_search_results(compressed_results, query)
+        formatted_results = self._format_search_results(
+            compressed_results, query
+        )
 
         return {
             "query": query,
+            "strategy": strategy.value,
             "results": compressed_results,
             "formatted": formatted_results,
             "total": len(compressed_results),
         }
 
-    def handle_open_url_by_index(self, args: dict[str, Any]) -> dict[str, Any]:
+    
+    def handle_open_url_by_index(
+        self, args: dict[str, Any]
+    ) -> dict[str, Any]:
         index = args.get("index")
 
         try:
             index = int(index)
         except (ValueError, TypeError):
-            return {"error": f"Invalid index: {index}. Please submit an integer."}
+            return {
+                "error": f"Invalid index: {index}. Please submit an integer."
+            }
 
-        if not self.app.last_search_results:
+        results = self.app.last_search_results
+
+        if not results:
             return {
                 "error": "No available results. Please run web_search first.",
                 "content": "",
             }
 
-        if index < 1 or index > len(self.app.last_search_results):
+        if not 1 <= index <= len(results):
             return {
                 "error": (
                     f"Index {index} out of range. "
-                    f"Valid range: 1-{len(self.app.last_search_results)}"
+                    f"Valid range: 1-{len(results)}"
                 ),
                 "content": "",
-                "available_indices": list(range(1, len(self.app.last_search_results) + 1)),
+                "available_indices": list(range(1, len(results) + 1)),
             }
 
-        selected_result = self.app.last_search_results[index - 1]
+        selected_result = results[index - 1]
         url = selected_result.get("url")
         title = selected_result.get("title", "Untitled")
 
-        self.app.console.print(f"[yellow]Opening result #{index}:[/yellow] {title}")
-        self.app.console.print(f"[dim]URL: {url}[/dim]")
+        if not url:
+            return {
+                "error": f"Search result #{index} has no URL.",
+                "content": "",
+            }
 
-        result = open_url(url, console=self.app.console)
+        console = self.app.console
+        console.print(f"[yellow]Opening result #{index}:[/yellow] {title}")
+        console.print(f"[dim]URL: {url}[/dim]")
 
+        result = open_url(url, console=console)
         result["selected_index"] = index
         result["selected_title"] = title
 
         return result
+
 
     def handle_run_python(self, args: dict[str, Any]) -> dict[str, Any]:
         code = args.get("code", "")

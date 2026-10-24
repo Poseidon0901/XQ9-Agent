@@ -54,3 +54,8 @@ class FileOperation(StrEnum):
     DELETE = "delete"
     LIST = "list"
     CLEAR_ALL = "clear_all"
+
+class SearchStrategy(StrEnum):
+    AUTO = "auto"
+    DUCKDUCKGO_SEARCH = "_search_ddgs"
+    WIKIPEDIA_API = "_search_wikipedia_api"
