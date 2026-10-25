@@ -55,6 +55,7 @@ class FileOperation(StrEnum):
     LIST = "list"
     CLEAR_ALL = "clear_all"
 
+
 class SearchStrategy(StrEnum):
     AUTO = "auto"
     DUCKDUCKGO_SEARCH = "_search_ddgs"

@@ -176,10 +176,10 @@ class MemoryManager:
             count = cursor.fetchone()["total"]
 
             cursor.execute("DELETE FROM memories")
-            
+
             # Reset the AUTOINCREMENT sequence to start from 1
             cursor.execute("DELETE FROM sqlite_sequence WHERE name='memories'")
-            
+
             conn.commit()
 
             return {

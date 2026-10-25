@@ -39,9 +39,7 @@ class CommandHandler:
 
         console.print(f"[green]{result.get('message')}[/green]")
         for failure in result.get("failed", []):
-            console.print(
-                f"[red]Failed to delete {failure['file']}: {failure['error']}[/red]"
-            )
+            console.print(f"[red]Failed to delete {failure['file']}: {failure['error']}[/red]")
         console.print("[dim]Active log files re-created.[/dim]")
         return CommandResult.CONTINUE
 
@@ -62,9 +60,7 @@ class CommandHandler:
                 try:
                     limit = int(args[1])
                 except ValueError:
-                    console.print(
-                        f"[red]Invalid limit: '{args[1]}'. Must be an integer.[/red]"
-                    )
+                    console.print(f"[red]Invalid limit: '{args[1]}'. Must be an integer.[/red]")
                     return CommandResult.CONTINUE
 
             result = log_manager.list_logs(limit)
@@ -85,8 +81,7 @@ class CommandHandler:
                 size_kb = entry["size"] / 1024
                 modified = entry["modified_at"].replace("T", " ")[:19]
                 console.print(
-                    f"  [cyan]{entry['name']}[/cyan] "
-                    f"[dim]({size_kb:.1f} KB, {modified})[/dim]"
+                    f"  [cyan]{entry['name']}[/cyan] [dim]({size_kb:.1f} KB, {modified})[/dim]"
                 )
             return CommandResult.CONTINUE
 
@@ -106,14 +101,11 @@ class CommandHandler:
             return self._clear_all_logs()
 
         console.print(
-            f"[red]Unknown log operation: '{operation}'. "
-            "Available: list, delete, clear_all[/red]"
+            f"[red]Unknown log operation: '{operation}'. Available: list, delete, clear_all[/red]"
         )
         return CommandResult.CONTINUE
-        
 
     def _infer_is_chinese(self) -> bool:
-        """推斷當前會話語言：優先看最後一條 user 消息，其次看現有 system prompt。"""
         app = self.app_instance
 
         for message in reversed(app.messages):
@@ -144,7 +136,6 @@ class CommandHandler:
         app = self.app_instance
         app.use_tools = is_enable
 
-        # tools 開關會改變 system prompt 的內容（with-tools / no-tools 版本），需要同步刷新
         if app.use_system_prompt:
             is_chinese = self._infer_is_chinese()
             if app.is_system_prompt_existing():
@@ -181,14 +172,16 @@ class CommandHandler:
             return CommandResult.CONTINUE
 
         status_aliases = {
-            "enable": True, "on": True, "true": True,
-            "disable": False, "off": False, "false": False,
+            "enable": True,
+            "on": True,
+            "true": True,
+            "disable": False,
+            "off": False,
+            "false": False,
         }
         is_enable = status_aliases.get(args[1].lower())
         if is_enable is None:
-            console.print(
-                f"[red]Invalid status: '{args[1]}'. Use 'enable' or 'disable'.[/red]"
-            )
+            console.print(f"[red]Invalid status: '{args[1]}'. Use 'enable' or 'disable'.[/red]")
             return CommandResult.CONTINUE
 
         if target == "system_prompt":
@@ -210,7 +203,7 @@ class CommandHandler:
 
         command = parts[0].lower()
         args = parts[1:]
-        
+
         match command:
             case "exit" | "quit":
                 return self.cmd_exit()
