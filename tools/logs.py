@@ -105,6 +105,38 @@ class LogManager:
             "failed": failed,
         }
 
+    def delete_log(self, filename: str) -> dict[str, Any]:
+        if not filename or not str(filename).strip():
+            return {"success": False, "error": "Log filename cannot be empty"}
+
+        try:
+            safe_name = Path(str(filename).strip()).name
+            if not safe_name.endswith(".log"):
+                safe_name = f"{safe_name}.log"
+            path = (self.log_dir / safe_name).resolve()
+        except Exception as e:
+            return {"success": False, "error": f"Invalid log filename: {e!s}"}
+
+        if path.parent != self.log_dir:
+            return {"success": False, "error": "Refusing to delete outside the log directory"}
+        if not path.exists():
+            return {"success": False, "error": f"Log file not found: {safe_name}"}
+        if not path.is_file():
+            return {"success": False, "error": f"Not a file: {safe_name}"}
+
+        try:
+            path.unlink()
+        except Exception as e:
+            return {"success": False, "error": f"Failed to delete {safe_name}: {e!s}"}
+
+        for name, logged_path in list(self.logs.items()):
+            if logged_path == path:
+                del self.logs[name]
+                self.init_log_files(name)
+                break
+
+        return {"success": True, "message": f"Deleted log file: {safe_name}", "name": safe_name}
+
     def write_log(self, name: str, message: str) -> LogResult:
         if name not in self.logs:
             result = self.init_log_files(name)
