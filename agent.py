@@ -2,7 +2,6 @@ import io
 import json
 import re
 import sys
-from datetime import datetime
 from pathlib import Path
 
 from openai import OpenAI
@@ -90,12 +89,12 @@ class App:
 
     def update_system_prompt(self, is_chinese_present: bool):
         system_prompt = self.get_system_prompt(is_chinese_present)
-        
+
         if self.messages and self.messages[0]["role"] == "system":
             self.messages[0] = {"role": "system", "content": system_prompt}
         else:
             self.messages.insert(0, {"role": "system", "content": system_prompt})
-            
+
         self.system_message_pending = False
 
     def is_system_prompt_existing(self):

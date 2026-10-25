@@ -12,7 +12,7 @@ from tools.config import (
     MAX_SEARCH_RESULTS_KEPT,
     MAX_SNIPPET_LENGTH,
     MAX_TOTAL_TOOL_CALLS,
-    SearchStrategy
+    SearchStrategy,
 )
 
 SEARCHED_QUERIES_MAXLEN = 50
@@ -81,10 +81,7 @@ class ToolHandler:
 
         query_key = query.lower()
         if query_key in self.searched_queries:
-            return {
-                "error": "You have already executed this search query. "
-                "Do not repeat searches."
-            }
+            return {"error": "You have already executed this search query. Do not repeat searches."}
 
         self.searched_queries.append(query_key)
 
@@ -108,20 +105,14 @@ class ToolHandler:
         self.app.last_search_query = query
 
         if results:
-            self.app.console.print(
-                f"[green]Found {len(results)} search results[/green]"
-            )
+            self.app.console.print(f"[green]Found {len(results)} search results[/green]")
             for i, r in enumerate(results[:3], 1):
                 short_title = r.get("title", "")[:60]
                 if len(r.get("title", "")) > 60:
                     short_title += "..."
-                self.app.console.print(
-                    f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]"
-                )
+                self.app.console.print(f"[dim]  {i}. {short_title} - {r.get('url', '')}[/dim]")
 
-        formatted_results = self._format_search_results(
-            compressed_results, query
-        )
+        formatted_results = self._format_search_results(compressed_results, query)
 
         return {
             "query": query,
@@ -131,18 +122,13 @@ class ToolHandler:
             "total": len(compressed_results),
         }
 
-    
-    def handle_open_url_by_index(
-        self, args: dict[str, Any]
-    ) -> dict[str, Any]:
+    def handle_open_url_by_index(self, args: dict[str, Any]) -> dict[str, Any]:
         index = args.get("index")
 
         try:
             index = int(index)
         except (ValueError, TypeError):
-            return {
-                "error": f"Invalid index: {index}. Please submit an integer."
-            }
+            return {"error": f"Invalid index: {index}. Please submit an integer."}
 
         results = self.app.last_search_results
 
@@ -154,10 +140,7 @@ class ToolHandler:
 
         if not 1 <= index <= len(results):
             return {
-                "error": (
-                    f"Index {index} out of range. "
-                    f"Valid range: 1-{len(results)}"
-                ),
+                "error": (f"Index {index} out of range. Valid range: 1-{len(results)}"),
                 "content": "",
                 "available_indices": list(range(1, len(results) + 1)),
             }
@@ -181,7 +164,6 @@ class ToolHandler:
         result["selected_title"] = title
 
         return result
-
 
     def handle_run_python(self, args: dict[str, Any]) -> dict[str, Any]:
         code = args.get("code", "")

@@ -2,7 +2,6 @@ import json
 import re
 import time
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
@@ -144,6 +143,7 @@ def _search_ddgs(query: str, console: Console):
         "_raw_data": {"source": "duckduckgo_official_package"},
     }
 
+
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
     has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
     if not lang:
@@ -254,10 +254,12 @@ def _search_wikipedia_api(query: str, console: Console, lang: str | None = None)
         console.print(f"[dim]Wikipedia API error: {e!s}[/dim]")
         raise ValueError(f"Wikipedia API error: {e!s}")
 
+
 SEARCH_STRATEGIES = {
     SearchStrategy.DUCKDUCKGO_SEARCH: _search_ddgs,
     SearchStrategy.WIKIPEDIA_API: _search_wikipedia_api,
 }
+
 
 def web_search(
     query: str,
@@ -283,26 +285,19 @@ def web_search(
             result = method(query, console=console)
 
             if not result or not result.get("results"):
-                console.print(
-                    f"[dim]{method.__name__} returned no results[/dim]"
-                )
+                console.print(f"[dim]{method.__name__} returned no results[/dim]")
                 continue
 
             results = result["results"]
             raw_data = result.get("_raw_data")
             successful_method = method.__name__
 
-            console.print(
-                f"[green]✓ Search successful using: "
-                f"{successful_method}[/green]"
-            )
+            console.print(f"[green]✓ Search successful using: {successful_method}[/green]")
             break
 
         except Exception as e:
             last_error = str(e)
-            console.print(
-                f"[dim]✗ {method.__name__} failed: {e!s}[/dim]"
-            )
+            console.print(f"[dim]✗ {method.__name__} failed: {e!s}[/dim]")
 
     if not results:
         error_msg = f"All search methods failed. Last error: {last_error}"
