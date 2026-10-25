@@ -19,7 +19,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 - **📁 File Management** – Create, read, update, delete, and list files inside `agent_workspace/` or custom paths
 - **🌍 Multilingual Support** – Automatically switches between Traditional Chinese and English system prompts based on user input
 - **🛠️ Rich CLI Interface** – Beautiful terminal output with Rich library, Markdown rendering, and colored logging
-- **📊 Comprehensive Logging** – All searches and URL opens are logged to the `logs/` directory for debugging
+- **📊 Comprehensive Logging** – All searches and URL opens are logged to the `logs/` directory, with `/log list | delete | clear_all` subcommands for inspection and cleanup
 
 ## 🚀 Quick Start
 
@@ -77,11 +77,14 @@ python agent.py
 | Command | Description |
 |---------|-------------|
 | `/exit` or `/quit` | Exit the program |
-| `/clear` or `/erase` | Clear the current conversation history |
-| `/logs` or `/showlogs` | Show recent log files |
-| `/clearlogs` or `/deletelogs` | Delete all log files (requires confirmation) |
-| `/togglesystemprompt` | Toggle whether to use system prompt |
-| `/toggletools` | Toggle whether to use tools |
+| `/clear` | Clear the current conversation history |
+| `/log list [limit]` | Show recent log files (default: 10) |
+| `/log delete <filename>` | Delete a single log file |
+| `/log clear_all` | Delete all log files (requires confirmation) |
+| `/set system_prompt <enable\|disable>` | Enable or disable the system prompt (alias: `prompt`) |
+| `/set tools <enable\|disable>` | Enable or disable tool calling |
+
+> **Note**: `/set` also accepts `on` / `off` / `true` / `false` in place of `enable` / `disable`.
 
 ### Example Interactions
 
@@ -224,12 +227,12 @@ MAX_SEARCH_RESULTS_KEPT = 5  # Results to keep in context
 
 ## 📝 Logging
 
-All activities are logged to the `logs/` directory:
+All activities are logged to the `logs/` directory. Log files follow the naming pattern `<module>_<timestamp>.log`, where `<timestamp>` is the agent launch time in `YYYYMMDD_HHMMSS` format:
 
 - `web_search_<timestamp>.log` – All search queries and results
 - `open_url_<timestamp>.log` – All URL fetches with content
 
-Use `/logs` to view recent log files and `/clearlogs` to clean them up.
+Use `/log list` to view recent log files, `/log delete <filename>` to remove a single file, and `/log clear_all` to remove all log files. All log operations go through the shared `LogManager` singleton (`app.log_manager`), which automatically re-creates active log files after a clear or delete.
 
 ## 🤝 Contributing
 
