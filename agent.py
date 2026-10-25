@@ -41,7 +41,6 @@ class App:
         self.console = Console()
 
         self.client = OpenAI(base_url=OPENAI_API_URL, api_key=OPENAI_API_KEY)
-        self.launch_timestamp = datetime.now().strftime("%Y-%m-%d.%H.%M.%S")
 
         self.last_search_results = []
         self.last_search_query = ""
@@ -91,12 +90,12 @@ class App:
 
     def update_system_prompt(self, is_chinese_present: bool):
         system_prompt = self.get_system_prompt(is_chinese_present)
-
-        if not self.messages:
-            self.messages.append({"role": "system", "content": system_prompt})
-        else:
+        
+        if self.messages and self.messages[0]["role"] == "system":
             self.messages[0] = {"role": "system", "content": system_prompt}
-
+        else:
+            self.messages.insert(0, {"role": "system", "content": system_prompt})
+            
         self.system_message_pending = False
 
     def is_system_prompt_existing(self):
