@@ -100,29 +100,6 @@ class App:
     def is_system_prompt_existing(self):
         return bool(self.messages and self.messages[0]["role"] == "system")
 
-    def _cleanup_old_messages(self):
-        if len(self.messages) <= 20:
-            return
-
-        new_messages = []
-        if self.messages and self.messages[0]["role"] == "system":
-            new_messages.append(self.messages[0])
-
-        recent = self.messages[-10:]
-
-        while recent and recent[0]["role"] == "tool":
-            idx = len(self.messages) - len(recent) - 1
-            if idx >= 0:
-                recent.insert(0, self.messages[idx])
-            else:
-                break
-
-        new_messages.extend(recent)
-        self.messages = new_messages
-        self.console.print(
-            "[dim]Part of the conversation history was cleaned up to save memory.[/dim]"
-        )
-
     def main(self):
         while True:
             try:
@@ -160,14 +137,10 @@ class App:
 
                 self.messages.append({"role": "user", "content": user_input})
 
-                if len(self.messages) > 30:
-                    self._cleanup_old_messages()
-
                 while True:
                     kwargs = {
                         "model": MODEL,
                         "messages": self.messages,
-                        "extra_body": {"reasoning": True, "reasoning_effort": "medium"},
                     }
 
                     if self.use_tools:
