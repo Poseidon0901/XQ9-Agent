@@ -32,7 +32,6 @@ FILE_ROOT_DIR = "agent_workspace"
 class CommandResult(Enum):
     BREAK = auto()
     CONTINUE = auto()
-    PROCESS = auto()
 
 
 class LogResult(Enum):
