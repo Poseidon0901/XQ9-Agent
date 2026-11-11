@@ -195,7 +195,6 @@ The `manage_files` tool provides persistent file storage. By default, files are 
 - **Duplicate search prevention**: Automatically blocks repeated search queries
 - **Timeout protection**: Python execution and network requests have timeouts
 - **Domain parking detection**: Avoids reading empty or advertisement pages
-- **Automatic conversation cleanup**: Trims old messages when history exceeds 30 messages to save memory and tokens
 - **Comprehensive error handling**: Graceful recovery from failures
 - **File access**: `manage_files` and `run_python` run with local permissions. Use responsibly.
 
