@@ -27,14 +27,6 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-if OPENAI_API_URL:
-    print("API_URL =", repr(OPENAI_API_URL))
-if MODEL:
-    print("MODEL =", repr(MODEL))
-if OPENAI_API_KEY:
-    print(f"API_KEY = {f'{OPENAI_API_KEY[:10]}...' if len(OPENAI_API_KEY) > 10 else '***'}")
-
-
 class App:
     def __init__(self):
         self.console = Console()
@@ -287,5 +279,11 @@ class App:
 
 
 if __name__ == "__main__":
+    if OPENAI_API_URL:
+        print("API_URL =", repr(OPENAI_API_URL))
+    if MODEL:
+        print("MODEL =", repr(MODEL))
+    if OPENAI_API_KEY:
+        print(f"API_KEY = {f'{OPENAI_API_KEY[:10]}...' if len(OPENAI_API_KEY) > 10 else '***'}")
     app = App()
     app.main()
