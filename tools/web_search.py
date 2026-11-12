@@ -10,7 +10,7 @@ from curl_cffi import requests
 from ddgs import DDGS
 from rich.console import Console
 
-from tools.common_funcs import get_domain, normalize_url
+from tools.common_funcs import get_domain, has_chinese, normalize_url
 from tools.config import SearchStrategy
 from tools.logs import get_log_manager
 
@@ -118,31 +118,51 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
 
 
 def _search_ddgs(query: str, console: Console):
-    results = []
-    try:
-        with DDGS() as ddgs:
-            raw_results = ddgs.text(query, region="tw-tz", max_results=10)
+    is_zh = has_chinese(query)
+    candidates = [
+        ("bing", "wt-wt"),
+        ("brave", "wt-wt"),
+        ("duckduckgo", "tw-tzh" if is_zh else "wt-wt"),
+    ]
 
-            for item in raw_results:
-                results.append(
-                    {
-                        "title": item.get("title", ""),
-                        "snippet": item.get("body", "No description available"),
-                        "url": item.get("href", ""),
-                    }
+    last_error = None
+    for backend, region in candidates:
+        results = []
+        try:
+            with DDGS() as ddgs:
+                raw_results = ddgs.text(
+                    query,
+                    region=region,
+                    safesearch="moderate",
+                    max_results=10,
+                    backend=backend,
                 )
-    except Exception as e:
-        raise ValueError(f"DuckDuckGo search failed: {e!s}")
 
-    if not results:
-        raise ValueError(f"No results returned from DuckDuckGo for query: {query}")
+                for item in raw_results:
+                    results.append(
+                        {
+                            "title": item.get("title", ""),
+                            "snippet": item.get("body", "No description available"),
+                            "url": item.get("href", ""),
+                        }
+                    )
 
-    return {
-        "query": query,
-        "results": results,
-        "_raw_data": {"source": "duckduckgo_official_package"},
-    }
+            if results:
+                return {
+                    "query": query,
+                    "results": results,
+                    "_raw_data": {
+                        "source": "ddgs",
+                        "backend": backend,
+                        "region": region,
+                    },
+                }
+        except Exception as e:
+            last_error = e
+            console.print(f"[dim]  ddgs ({backend}) failed: {e!s}[/dim]")
+            continue
 
+    raise ValueError(f"Search failed across all ddgs backends. Last error: {last_error}")
 
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
     has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
