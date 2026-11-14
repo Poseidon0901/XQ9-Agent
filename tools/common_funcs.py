@@ -1,6 +1,8 @@
 import re
 from urllib.parse import urlparse, urlunparse
 
+from rich.console import Console
+
 
 def get_domain(url: str) -> str:
     try:
@@ -36,3 +38,11 @@ def has_chinese(text: str) -> bool:
 def format_as_blockquote(text: str) -> str:
     lines = text.split("\n")
     return "\n".join(f"> {line}" if line else ">" for line in lines)
+
+def safe_print(console: Console | None, *args, **kwargs) -> None:
+    if not console:
+        return
+    try:
+        console.print(*args, **kwargs)
+    except Exception:
+        pass

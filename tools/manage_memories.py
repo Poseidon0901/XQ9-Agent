@@ -6,16 +6,7 @@ from typing import Any
 from rich.console import Console
 
 from tools.config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH, MemoryOperation
-
-
-def _safe_print(console: Console | None, *args, **kwargs) -> None:
-    if not console:
-        return
-    try:
-        console.print(*args, **kwargs)
-    except Exception:
-        pass
-
+from tools.common_funcs import safe_print
 
 class MemoryManager:
     def __init__(self, db_path: str = MEMORY_DB_PATH):
@@ -262,75 +253,75 @@ def manage_memories(
     except (ValueError, AttributeError):
         supported = ", ".join(o.value for o in MemoryOperation)
         err_msg = f"Unknown operation: '{operation}'. Supported operations: {supported}"
-        _safe_print(console, f"[red]✗ {err_msg}[/red]")
+        safe_print(console, f"[red]✗ {err_msg}[/red]")
         return {"success": False, "error": err_msg}
 
-    _safe_print(
+    safe_print(
         console,
         "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]",
     )
-    _safe_print(
+    safe_print(
         console,
         "[bold cyan]║           📝 MEMORY OPERATION - PARAMETERS                   ║[/bold cyan]",
     )
-    _safe_print(
+    safe_print(
         console,
         "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]",
     )
-    _safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
-    _safe_print(
+    safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
+    safe_print(
         console,
         f"[bold yellow]Content:[/bold yellow] {repr(content) if content else '(None)'}",
     )
-    _safe_print(
+    safe_print(
         console,
         f"[bold yellow]Memory ID:[/bold yellow] {memory_id if memory_id is not None else '(None)'}",
     )
-    _safe_print(console, f"[bold yellow]Date:[/bold yellow] {date if date else '(None)'}")
-    _safe_print(console, f"[bold yellow]Time:[/bold yellow] {time if time else '(None)'}")
-    _safe_print(console, f"[bold yellow]Keyword:[/bold yellow] {keyword if keyword else '(None)'}")
-    _safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
+    safe_print(console, f"[bold yellow]Date:[/bold yellow] {date if date else '(None)'}")
+    safe_print(console, f"[bold yellow]Time:[/bold yellow] {time if time else '(None)'}")
+    safe_print(console, f"[bold yellow]Keyword:[/bold yellow] {keyword if keyword else '(None)'}")
+    safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
 
-    _safe_print(console, "[dim]─" * 60 + "[/dim]")
-    _safe_print(console, "[bold]Parameter Types:[/bold]")
-    _safe_print(console, f"  operation: {type(operation).__name__} ({op.name})")
-    _safe_print(
+    safe_print(console, "[dim]─" * 60 + "[/dim]")
+    safe_print(console, "[bold]Parameter Types:[/bold]")
+    safe_print(console, f"  operation: {type(operation).__name__} ({op.name})")
+    safe_print(
         console, f"  content: {type(content).__name__ if content is not None else 'NoneType'}"
     )
-    _safe_print(
+    safe_print(
         console,
         f"  memory_id: {type(memory_id).__name__ if memory_id is not None else 'NoneType'}",
     )
-    _safe_print(console, f"  date: {type(date).__name__ if date is not None else 'NoneType'}")
-    _safe_print(console, f"  time: {type(time).__name__ if time is not None else 'NoneType'}")
-    _safe_print(
+    safe_print(console, f"  date: {type(date).__name__ if date is not None else 'NoneType'}")
+    safe_print(console, f"  time: {type(time).__name__ if time is not None else 'NoneType'}")
+    safe_print(
         console, f"  keyword: {type(keyword).__name__ if keyword is not None else 'NoneType'}"
     )
-    _safe_print(console, "[dim]─" * 60 + "[/dim]\n")
+    safe_print(console, "[dim]─" * 60 + "[/dim]\n")
 
-    _safe_print(console, f"[yellow]▶ Executing memory operation:[/yellow] {op.value}")
+    safe_print(console, f"[yellow]▶ Executing memory operation:[/yellow] {op.value}")
 
     try:
         match op:
             case MemoryOperation.CREATE:
-                _safe_print(
+                safe_print(
                     console,
                     f"[dim]  content length: {len(content) if content else 0} characters[/dim]",
                 )
                 result = manager.create_memory(content=content, date=date, time=time)
                 if result.get("success"):
-                    _safe_print(
+                    safe_print(
                         console, f"[green]✓ Memory created:[/green] ID {result['memory']['id']}"
                     )
-                    _safe_print(
+                    safe_print(
                         console, f"[dim]  Content: {result['memory']['content'][:50]}...[/dim]"
                     )
-                    _safe_print(
+                    safe_print(
                         console,
                         f"[dim]  Date/Time: {result['memory']['date']} {result['memory']['time']}[/dim]",
                     )
                 else:
-                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                    safe_print(console, f"[red]✗ {result.get('error')}[/red]")
                 return result
 
             case MemoryOperation.READ:
@@ -341,27 +332,27 @@ def manage_memories(
                     filters.append(f"date={date}")
                 if keyword:
                     filters.append(f"keyword={keyword}")
-                _safe_print(
+                safe_print(
                     console,
                     f"[dim]  Filters: {', '.join(filters) if filters else 'None (list all)'}[/dim]",
                 )
                 result = manager.read_memories(memory_id=memory_id, date=date, keyword=keyword)
                 if result.get("memories"):
-                    _safe_print(
+                    safe_print(
                         console, f"[green]✓ Found {len(result['memories'])} memory(ies)[/green]"
                     )
                     for m in result["memories"]:
-                        _safe_print(
+                        safe_print(
                             console,
                             f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content', '')[:50]}...[/dim]",
                         )
                 else:
-                    _safe_print(console, "[dim]No memories found[/dim]")
+                    safe_print(console, "[dim]No memories found[/dim]")
                 return result
 
             case MemoryOperation.UPDATE:
-                _safe_print(console, f"[dim]  Updating memory ID: {memory_id}[/dim]")
-                _safe_print(
+                safe_print(console, f"[dim]  Updating memory ID: {memory_id}[/dim]")
+                safe_print(
                     console,
                     f"[dim]  New content: {content[:50] + '...' if content and len(content) > 50 else content}[/dim]",
                 )
@@ -377,53 +368,53 @@ def manage_memories(
                     return {"success": False, "error": "Content is required for update operation"}
                 result = manager.update_memory(memory_id, content)
                 if result.get("success"):
-                    _safe_print(console, f"[green]✓ Memory {memory_id} updated[/green]")
-                    _safe_print(
+                    safe_print(console, f"[green]✓ Memory {memory_id} updated[/green]")
+                    safe_print(
                         console,
                         f"[dim]  New content: {result['memory']['content'][:50]}...[/dim]",
                     )
                 else:
-                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                    safe_print(console, f"[red]✗ {result.get('error')}[/red]")
                 return result
 
             case MemoryOperation.DELETE:
-                _safe_print(console, f"[dim]  Deleting memory ID: {memory_id}[/dim]")
+                safe_print(console, f"[dim]  Deleting memory ID: {memory_id}[/dim]")
                 if not memory_id:
                     return {"success": False, "error": "memory_id is required for delete operation"}
                 result = manager.delete_memory(memory_id)
                 if result.get("success"):
-                    _safe_print(console, f"[green]✓ Memory {memory_id} deleted[/green]")
+                    safe_print(console, f"[green]✓ Memory {memory_id} deleted[/green]")
                 else:
-                    _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+                    safe_print(console, f"[red]✗ {result.get('error')}[/red]")
                 return result
 
             case MemoryOperation.CLEAR_ALL:
-                _safe_print(console, "[yellow]⚠️  Clearing ALL memories![/yellow]")
+                safe_print(console, "[yellow]⚠️  Clearing ALL memories![/yellow]")
                 result = manager.clear_all_memories()
-                _safe_print(console, f"[green]✓ {result.get('message')}[/green]")
+                safe_print(console, f"[green]✓ {result.get('message')}[/green]")
                 return result
 
             case MemoryOperation.LIST:
-                _safe_print(console, f"[dim]  Limit: {limit} (showing most recent)[/dim]")
+                safe_print(console, f"[dim]  Limit: {limit} (showing most recent)[/dim]")
                 result = manager.list_memories(limit)
                 if result.get("memories"):
-                    _safe_print(
+                    safe_print(
                         console, f"[green]✓ Found {result.get('total', 0)} memories[/green]"
                     )
                     for m in result["memories"]:
-                        _safe_print(
+                        safe_print(
                             console,
                             f"[dim]  [{m.get('id')}] {m.get('date')} {m.get('time')}: {m.get('content_preview')}[/dim]",
                         )
                     if result.get("total", 0) > len(result.get("memories", [])):
-                        _safe_print(
+                        safe_print(
                             console,
                             f"[dim]  ... and {result.get('total', 0) - len(result.get('memories', []))} more[/dim]",
                         )
                 else:
-                    _safe_print(console, "[dim]No memories found[/dim]")
+                    safe_print(console, "[dim]No memories found[/dim]")
                 return result
 
     except Exception as e:
-        _safe_print(console, f"[red]✗ Memory operation failed:[/red] {e!s}")
+        safe_print(console, f"[red]✗ Memory operation failed:[/red] {e!s}")
         return {"success": False, "error": f"Memory operation failed: {e!s}"}

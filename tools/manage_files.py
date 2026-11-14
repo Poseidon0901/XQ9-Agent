@@ -6,15 +6,7 @@ from typing import Any
 from rich.console import Console
 
 from tools.config import FILE_ROOT_DIR, MAX_FILE_LIMIT, FileOperation
-
-
-def _safe_print(console: Console | None, *args, **kwargs) -> None:
-    if not console:
-        return
-    try:
-        console.print(*args, **kwargs)
-    except Exception:
-        pass
+from tools.common_funcs import safe_print
 
 
 class FileManager:
@@ -251,33 +243,33 @@ def manage_files(
     except (ValueError, AttributeError):
         supported = ", ".join(o.value for o in FileOperation)
         err_msg = f"Unknown operation: '{operation}'. Supported operations: {supported}"
-        _safe_print(console, f"[red]✗ {err_msg}[/red]")
+        safe_print(console, f"[red]✗ {err_msg}[/red]")
         return {"success": False, "error": err_msg}
 
-    _safe_print(
+    safe_print(
         console,
         "\n[bold cyan]╔══════════════════════════════════════════════════════════════╗[/bold cyan]",
     )
-    _safe_print(
+    safe_print(
         console,
         "[bold cyan]║           📁 FILE OPERATION - PARAMETERS                     ║[/bold cyan]",
     )
-    _safe_print(
+    safe_print(
         console,
         "[bold cyan]╚══════════════════════════════════════════════════════════════╝[/bold cyan]",
     )
-    _safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
-    _safe_print(
+    safe_print(console, f"[bold yellow]Operation:[/bold yellow] {op.value}")
+    safe_print(
         console,
         f"[bold yellow]File path:[/bold yellow] {file_path if file_path else '(None)'}",
     )
-    _safe_print(
+    safe_print(
         console,
         f"[bold yellow]Content:[/bold yellow] "
         f"{repr(content[:80]) + '...' if content and len(content) > 80 else repr(content)}",
     )
-    _safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
-    _safe_print(console, "[dim]─" * 60 + "[/dim]\n")
+    safe_print(console, f"[bold yellow]Limit:[/bold yellow] {limit}")
+    safe_print(console, "[dim]─" * 60 + "[/dim]\n")
 
     try:
         match op:
@@ -315,18 +307,18 @@ def manage_files(
                 result = manager.clear_all(directory=file_path)
 
     except Exception as e:
-        _safe_print(console, f"[red]✗ File operation failed:[/red] {e}")
+        safe_print(console, f"[red]✗ File operation failed:[/red] {e}")
         return {"success": False, "error": f"File operation failed: {e}"}
 
     if result.get("success"):
-        _safe_print(console, f"[green]✓ {result.get('message', 'OK')}[/green]")
+        safe_print(console, f"[green]✓ {result.get('message', 'OK')}[/green]")
         if "file" in result and "content" in result["file"]:
             preview = result["file"]["content"][:200]
-            _safe_print(console, f"[dim]  Content preview: {preview}[/dim]")
+            safe_print(console, f"[dim]  Content preview: {preview}[/dim]")
         elif "entries" in result:
             for e in result["entries"]:
-                _safe_print(console, f"[dim]  [{e['type']}] {e['name']} ({e['size']} bytes)[/dim]")
+                safe_print(console, f"[dim]  [{e['type']}] {e['name']} ({e['size']} bytes)[/dim]")
     else:
-        _safe_print(console, f"[red]✗ {result.get('error')}[/red]")
+        safe_print(console, f"[red]✗ {result.get('error')}[/red]")
 
     return result
