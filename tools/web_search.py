@@ -119,8 +119,9 @@ def is_suspicious_result(title: str, snippet: str, url: str) -> bool:
 
 def _search_ddgs(query: str, console: Console):
     is_zh = has_chinese(query)
+
     candidates = [
-        ("bing", "wt-wt"),
+        ("bing", "wt-wt"), 
         ("brave", "wt-wt"),
         ("duckduckgo", "tw-tzh" if is_zh else "wt-wt"),
     ]
@@ -128,39 +129,40 @@ def _search_ddgs(query: str, console: Console):
     last_error = None
     for backend, region in candidates:
         results = []
-        try:
-            with DDGS() as ddgs:
-                raw_results = ddgs.text(
-                    query,
-                    region=region,
-                    safesearch="moderate",
-                    max_results=10,
-                    backend=backend,
-                )
+        for attempt in range(2):
+            try:
+                with DDGS() as ddgs:
+                    raw_results = ddgs.text(
+                        query,
+                        region=region,
+                        safesearch="moderate",
+                        max_results=10,
+                        backend=backend,
+                    )
 
-                for item in raw_results:
-                    results.append(
-                        {
+                    for item in raw_results:
+                        results.append({
                             "title": item.get("title", ""),
                             "snippet": item.get("body", "No description available"),
                             "url": item.get("href", ""),
-                        }
-                    )
+                        })
 
-            if results:
-                return {
-                    "query": query,
-                    "results": results,
-                    "_raw_data": {
-                        "source": "ddgs",
-                        "backend": backend,
-                        "region": region,
-                    },
-                }
-        except Exception as e:
-            last_error = e
-            console.print(f"[dim]  ddgs ({backend}) failed: {e!s}[/dim]")
-            continue
+                if results:
+                    return {
+                        "query": query,
+                        "results": results,
+                        "_raw_data": {"source": "ddgs", "backend": backend, "region": region},
+                    }
+
+                time.sleep(0.5)
+                
+            except Exception as e:
+                last_error = e
+                console.print(f"[dim]  ddgs ({backend}) failed: {e!s}[/dim]")
+                time.sleep(1)
+                continue
+
+        continue
 
     raise ValueError(f"Search failed across all ddgs backends. Last error: {last_error}")
 
