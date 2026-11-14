@@ -1,10 +1,14 @@
 import glob
 import os
 from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import Any
 
-from tools.config import LogResult
+
+class LogResult(Enum):
+    SUCCESS = auto()
+    FAILURE = auto()
 
 
 class LogManager:

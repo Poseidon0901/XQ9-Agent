@@ -3,16 +3,17 @@ import re
 import time
 from datetime import datetime
 from typing import Any
-from urllib.parse import quote
+from urllib.parse import quote, urlparse, urlunparse
 
 from bs4 import BeautifulSoup
 from curl_cffi import requests
 from ddgs import DDGS
 from rich.console import Console
 
-from tools.common_funcs import get_domain, has_chinese, normalize_url
+from core.logs import get_log_manager
+from core.text_utils import has_chinese
 from tools.config import SearchStrategy
-from tools.logs import get_log_manager
+from tools.web_utils import get_domain
 
 SUSPICIOUS_KEYWORDS = {
     "domain for sale",
@@ -27,6 +28,24 @@ SUSPICIOUS_KEYWORDS = {
 MODULE_NAME = "web_search"
 
 log_manager = get_log_manager()
+
+
+def normalize_url(url: str) -> str:
+    try:
+        parsed = urlparse(url)
+
+        if not parsed.netloc or "." not in parsed.netloc:
+            raise ValueError("Invalid domain")
+
+        if not parsed.scheme:
+            url = "https://" + url
+            parsed = urlparse(url)
+
+        return urlunparse(
+            (parsed.scheme, parsed.netloc.lower(), parsed.path.rstrip("/"), "", "", "")
+        )
+    except Exception:
+        return url
 
 
 def log(
@@ -121,7 +140,7 @@ def _search_ddgs(query: str, console: Console):
     is_zh = has_chinese(query)
 
     candidates = [
-        ("bing", "wt-wt"), 
+        ("bing", "wt-wt"),
         ("brave", "wt-wt"),
         ("duckduckgo", "tw-tzh" if is_zh else "wt-wt"),
     ]
@@ -129,7 +148,7 @@ def _search_ddgs(query: str, console: Console):
     last_error = None
     for backend, region in candidates:
         results = []
-        for attempt in range(2):
+        for _attempt in range(2):
             try:
                 with DDGS() as ddgs:
                     raw_results = ddgs.text(
@@ -141,11 +160,13 @@ def _search_ddgs(query: str, console: Console):
                     )
 
                     for item in raw_results:
-                        results.append({
-                            "title": item.get("title", ""),
-                            "snippet": item.get("body", "No description available"),
-                            "url": item.get("href", ""),
-                        })
+                        results.append(
+                            {
+                                "title": item.get("title", ""),
+                                "snippet": item.get("body", "No description available"),
+                                "url": item.get("href", ""),
+                            }
+                        )
 
                 if results:
                     return {
@@ -155,7 +176,7 @@ def _search_ddgs(query: str, console: Console):
                     }
 
                 time.sleep(0.5)
-                
+
             except Exception as e:
                 last_error = e
                 console.print(f"[dim]  ddgs ({backend}) failed: {e!s}[/dim]")
@@ -166,10 +187,11 @@ def _search_ddgs(query: str, console: Console):
 
     raise ValueError(f"Search failed across all ddgs backends. Last error: {last_error}")
 
+
 def _search_wikipedia_api(query: str, console: Console, lang: str | None = None):
-    has_chinese = bool(re.search(r"[\u4e00-\u9fff]", query))
+    is_zh = has_chinese(query)
     if not lang:
-        lang = "zh" if has_chinese else "en"
+        lang = "zh" if is_zh else "en"
     has_traditional = bool(re.search(r"[\u3400-\u4dbf\ufa0e-\ufa2f]", query))
 
     console.print(f"[dim]Wikipedia API search ({lang}):[/dim] {query}")

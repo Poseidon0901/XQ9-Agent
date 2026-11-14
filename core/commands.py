@@ -1,7 +1,12 @@
 import shlex
+from enum import Enum, auto
 
-from tools.common_funcs import has_chinese
-from tools.config import CommandResult
+from core.text_utils import has_chinese
+
+
+class CommandResult(Enum):
+    BREAK = auto()
+    CONTINUE = auto()
 
 
 class CommandHandler:

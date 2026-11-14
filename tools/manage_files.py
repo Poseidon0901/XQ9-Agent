@@ -6,7 +6,7 @@ from typing import Any
 from rich.console import Console
 
 from tools.config import FILE_ROOT_DIR, MAX_FILE_LIMIT, FileOperation
-from tools.common_funcs import safe_print
+from tools.console_utils import safe_print
 
 
 class FileManager:

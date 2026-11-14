@@ -7,8 +7,8 @@ from bs4 import BeautifulSoup
 from curl_cffi import requests
 from rich.console import Console
 
-from tools.common_funcs import get_domain
-from tools.logs import get_log_manager
+from core.logs import get_log_manager
+from tools.web_utils import get_domain
 
 TRUSTED_DOMAINS = {
     "github.com",

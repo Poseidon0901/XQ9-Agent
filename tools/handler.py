@@ -1,7 +1,6 @@
 from collections import deque
 from typing import Any
 
-from tools import manage_files, manage_memories, open_url, run_python, web_search
 from tools.config import (
     MAX_FILE_CALLS,
     MAX_FORMATTED_RESULTS_LENGTH,
@@ -14,6 +13,11 @@ from tools.config import (
     MAX_TOTAL_TOOL_CALLS,
     SearchStrategy,
 )
+from tools.manage_files import manage_files
+from tools.manage_memories import manage_memories
+from tools.open_url import open_url
+from tools.run_python import run_python
+from tools.web_search import web_search
 
 SEARCHED_QUERIES_MAXLEN = 50
 

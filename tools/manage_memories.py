@@ -6,7 +6,8 @@ from typing import Any
 from rich.console import Console
 
 from tools.config import MAX_MEMORY_LIMIT, MEMORY_DB_PATH, MemoryOperation
-from tools.common_funcs import safe_print
+from tools.console_utils import safe_print
+
 
 class MemoryManager:
     def __init__(self, db_path: str = MEMORY_DB_PATH):
@@ -398,9 +399,7 @@ def manage_memories(
                 safe_print(console, f"[dim]  Limit: {limit} (showing most recent)[/dim]")
                 result = manager.list_memories(limit)
                 if result.get("memories"):
-                    safe_print(
-                        console, f"[green]✓ Found {result.get('total', 0)} memories[/green]"
-                    )
+                    safe_print(console, f"[green]✓ Found {result.get('total', 0)} memories[/green]")
                     for m in result["memories"]:
                         safe_print(
                             console,

@@ -1,9 +1,9 @@
-from .config import FileOperation, MemoryOperation, SearchStrategy
-from .manage_files import get_file_manager, manage_files
-from .manage_memories import get_memory_manager, manage_memories
-from .open_url import open_url
-from .run_python import run_python
-from .web_search import web_search
+from tools.config import FileOperation, MemoryOperation, SearchStrategy
+from tools.manage_files import get_file_manager, manage_files
+from tools.manage_memories import get_memory_manager, manage_memories
+from tools.open_url import open_url
+from tools.run_python import run_python
+from tools.web_search import web_search
 
 __all__ = [
     "TOOLS",

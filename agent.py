@@ -9,12 +9,12 @@ from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
 
+from core.commands import CommandHandler, CommandResult
+from core.config import CONSOLE_REFRESH_RATE, MODEL, OPENAI_API_KEY, OPENAI_API_URL
+from core.logs import get_log_manager
+from core.text_utils import has_chinese
 from tools import TOOLS
-from tools.commands import CommandHandler
-from tools.common_funcs import format_as_blockquote, has_chinese
-from tools.config import MODEL, OPENAI_API_KEY, OPENAI_API_URL, CONSOLE_REFRESH_RATE, CommandResult
 from tools.handler import ToolHandler
-from tools.logs import get_log_manager
 from tools.manage_memories import get_memory_manager
 
 if sys.platform == "win32":
@@ -26,6 +26,7 @@ if sys.platform == "win32":
         sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding="utf-8", errors="replace")
     except Exception:
         pass
+
 
 class App:
     def __init__(self):
@@ -42,14 +43,18 @@ class App:
         self.tool_handler = ToolHandler(self)
         self.command_handler = CommandHandler(self)
 
-        self.system_message_zh_tw = Path("prompts/system_prompt_zh_tw.md").read_text(encoding="utf-8")
-        self.system_message_en_us = Path("prompts/system_prompt_en_us.md").read_text(encoding="utf-8")
-        self.system_message_zh_tw_no_tools = Path("prompts/system_prompt_zh_tw_no_tools.md").read_text(
+        self.system_message_zh_tw = Path("prompts/system_prompt_zh_tw.md").read_text(
             encoding="utf-8"
         )
-        self.system_message_en_us_no_tools = Path("prompts/system_prompt_en_us_no_tools.md").read_text(
+        self.system_message_en_us = Path("prompts/system_prompt_en_us.md").read_text(
             encoding="utf-8"
         )
+        self.system_message_zh_tw_no_tools = Path(
+            "prompts/system_prompt_zh_tw_no_tools.md"
+        ).read_text(encoding="utf-8")
+        self.system_message_en_us_no_tools = Path(
+            "prompts/system_prompt_en_us_no_tools.md"
+        ).read_text(encoding="utf-8")
         self.system_message_pending = False
 
         self.messages = []
@@ -68,6 +73,10 @@ class App:
                 url = "https://" + url
             return url
         return None
+
+    def _format_as_blockquote(self, text: str) -> str:
+        lines = text.split("\n")
+        return "\n".join(f"> {line}" if line else ">" for line in lines)
 
     def get_system_prompt(self, is_chinese_present: bool):
         if self.use_tools:
@@ -155,7 +164,9 @@ class App:
 
                     try:
                         with Live(
-                            Markdown(""), console=self.console, refresh_per_second=CONSOLE_REFRESH_RATE
+                            Markdown(""),
+                            console=self.console,
+                            refresh_per_second=CONSOLE_REFRESH_RATE,
                         ) as live:
                             for chunk in stream:
                                 if not chunk.choices:
@@ -170,7 +181,7 @@ class App:
                                     reasoning_content += reasoning
                                     live.update(
                                         Markdown(
-                                            f"*Thinking...*\n\n{format_as_blockquote(reasoning_content)}"
+                                            f"*Thinking...*\n\n{self._format_as_blockquote(reasoning_content)}"
                                         )
                                     )
                                 if delta.content:
@@ -178,7 +189,7 @@ class App:
                                     if reasoning_content:
                                         live.update(
                                             Markdown(
-                                                f"*Thinking...*\n\n{format_as_blockquote(reasoning_content)}\n\n{full_content}"
+                                                f"*Thinking...*\n\n{self._format_as_blockquote(reasoning_content)}\n\n{full_content}"
                                             )
                                         )
                                     else:
