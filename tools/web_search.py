@@ -140,9 +140,9 @@ def _search_ddgs(query: str, console: Console):
     is_zh = has_chinese(query)
 
     candidates = [
-        ("bing", "wt-wt"),
-        ("brave", "wt-wt"),
-        ("duckduckgo", "tw-tzh" if is_zh else "wt-wt"),
+        ("bing", "zh-tw" if is_zh else "en-US"),
+        ("brave", "zh-tw" if is_zh else "en-US"),
+        ("duckduckgo", "tw-tzh" if is_zh else "en-US"),
     ]
 
     last_error = None
