@@ -7,19 +7,20 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 
 ### Prerequisites
 
-- Python 3.12 (tested and confirmed working)
-- An API key for an OpenAI-compatible API endpoint (e.g., OpenAI, Azure OpenAI, or local LLM)
+- Python 3.12+ (tested and confirmed working)
+- An API key for an OpenAI-compatible API endpoint (e.g., OpenAI, Azure OpenAI, or local LLMs such as Ollama / vLLM)
 
 ## ✨ Features
 
-- **🌐 Web Search** – Search the internet with automatic fallback mechanisms (DuckDuckGo, Wikipedia API)
-- **📖 URL Reading** – Extract and clean text content from any webpage, with built-in detection for domain parking pages
-- **🐍 Local Python Execution** – Run Python code directly on your local machine (equivalent to `python -c "code"`)
-- **🧠 Persistent Memory** – Store, retrieve, update, and delete memories across all conversations using a local SQLite database
-- **📁 File Management** – Create, read, update, delete, and list files inside `agent_workspace/` or custom paths
-- **🌍 Multilingual Support** – Automatically switches between Traditional Chinese and English system prompts based on user input
-- **🛠️ Rich CLI Interface** – Beautiful terminal output with Rich library, Markdown rendering, and colored logging
-- **📊 Comprehensive Logging** – All searches and URL opens are logged to the `logs/` directory, with `/log list | delete | clear_all` subcommands for inspection and cleanup
+- **🌐 Resilient Web Search** – Search the internet using DuckDuckGo (`ddgs`) with multi-backend rotation (`bing`, `brave`, `duckduckgo`), automatic retries, language-aware region settings (`zh-tw` / `en-US`), and Wikipedia API fallback.
+- **📖 URL Reading & Anti-Bot Protection** – Extract and clean text content from webpages using `curl_cffi` and `BeautifulSoup`, featuring heuristic scoring to detect domain parking, for-sale landers, and anti-bot challenges.
+- **🔗 Automatic URL Detection** – Automatically identifies URLs inside user prompts and stages them into the current search results list for instant reading.
+- **🐍 Local Python Execution** – Safely execute Python code directly via a local subprocess (`python -c "code"`) with configurable execution timeouts (1–300s).
+- **🧠 Persistent Memory** – Store, retrieve, update, and delete memories across all conversations using a local SQLite database (`memories.db`).
+- **📁 File Management** – Create, read, update, delete, and list files inside the dedicated workspace (`agent_workspace/`) or custom paths.
+- **🌍 Multilingual Support** – Automatically detects language in user inputs and dynamically switches between Traditional Chinese (`zh_tw`) and English (`en_us`) system prompts (with tool and no-tool variants).
+- **🛠️ Rich CLI Interface** – Beautiful terminal interface powered by Rich, featuring streaming Markdown rendering, live reasoning/thinking blocks, and colored execution logs.
+- **📊 Comprehensive Logging** – All searches, URL fetches, and tool outputs are recorded in the `logs/` directory, managed via a singleton `LogManager` and interactive `/log` commands.
 
 ## 🚀 Quick Start
 
@@ -52,7 +53,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
 
 4. **Set up environment variables**
 
-   Create a `.env` file in the project root with the following:
+   Create a `.env` file in the project root (see `.env.example`):
 
    ```env
    OPENAI_API_KEY=your_api_key_here
@@ -60,7 +61,7 @@ An AI-powered agent interface built with Python that leverages tool calling to p
    MODEL=gpt-6-luna
    ```
 
-   > **Note**: The API must support tool calling (function calling).
+   > **Note**: If `OPENAI_API_KEY` is omitted or empty, it automatically defaults to `"placeholder"` (convenient for local LLM servers like Ollama or vLLM that do not require an API key). The API endpoint must support OpenAI-compatible tool calling (function calling).
 
 ## 🎮 Usage
 
@@ -72,19 +73,21 @@ Start the agent:
 python agent.py
 ```
 
+Upon launch, the application displays configured connection parameters (`API_URL`, `MODEL`, and masked `API_KEY`) and starts the interactive CLI session.
+
 ### Interactive CLI Commands
 
 | Command | Description |
 |---------|-------------|
 | `/exit` or `/quit` | Exit the program |
-| `/clear` | Clear the current conversation history |
-| `/log list [limit]` | Show recent log files (default: 10) |
-| `/log delete <filename>` | Delete a single log file |
-| `/log clear_all` | Delete all log files (requires confirmation) |
-| `/set system_prompt <enable\|disable>` | Enable or disable the system prompt (alias: `prompt`) |
-| `/set tools <enable\|disable>` | Enable or disable tool calling |
+| `/clear` | Clear conversation history, reset turn counters, search context, and query history |
+| `/log list [limit]` | List recent log files (default: 10, max: 200) with file size and modification timestamps |
+| `/log delete <filename>` | Delete a single specified log file |
+| `/log clear_all` | Delete all log files (prompts for confirmation; automatically re-creates active session log files) |
+| `/set system_prompt <enable\|disable>` | Enable or disable the system prompt (alias: `/set prompt ...`) |
+| `/set tools <enable\|disable>` | Enable or disable tool calling (dynamically switches between tools and no-tools prompt variants) |
 
-> **Note**: `/set` also accepts `on` / `off` / `true` / `false` in place of `enable` / `disable`.
+> **Tip**: `/set` also accepts `on` / `off` / `true` / `false` as values.
 
 ### Example Interactions
 
@@ -97,7 +100,13 @@ AI > Paris is the capital of France...
 **Perform a web search:**
 ```
 You > What are the latest features in Python 3.13?
-[AI performs web_search, reads relevant articles, and provides a summary]
+[AI performs web_search, reads relevant articles via open_url_by_index, and provides a summary]
+```
+
+**Direct URL inspection:**
+```
+You > Can you summarize this article: https://example.com/news
+[AI detects URL, stages it to search results, opens it via open_url_by_index, and summarizes the content]
 ```
 
 **Remember information:**
@@ -116,122 +125,139 @@ You > Calculate the average of [1, 2, 3, 4, 5]
 
 ## 🔧 Tool Reference
 
-The agent has 5 tools available. Each has usage limits per turn to prevent infinite loops:
+The agent has 5 built-in tools. Usage limits per turn prevent infinite loops and runaway API costs:
 
 | Tool | Purpose | Max Calls (per turn) |
 |------|---------|----------------------|
-| `web_search(query)` | Search the internet for information | 5 |
-| `open_url_by_index(index)` | Read a search result by its index | 10 |
-| `run_python(code)` | Execute Python code locally | 15 |
-| `manage_memories(operation, ...)` | Manage persistent memory (create, read, update, delete, list, clear_all) | 10 |
-| `manage_files(operation, ...)` | Manage files in workspace or custom paths (create, read, update, delete, list, clear_all) | 15 |
+| `web_search(query, [strategy])` | Search the internet (`auto`, `_search_ddgs`, `_search_wikipedia_api`) | 5 |
+| `open_url_by_index(index)` | Read full text from a search result by 1-based index | 10 |
+| `run_python(code, [timeout])` | Execute Python code locally via subprocess (timeout: 1–300s, default: 10s) | 15 |
+| `manage_memories(operation, ...)` | Manage persistent memory (`create`, `read`, `update`, `delete`, `list`, `clear_all`) | 10 |
+| `manage_files(operation, ...)` | Manage files in workspace or custom paths (`create`, `read`, `update`, `delete`, `list`, `clear_all`) | 15 |
 
-> **Note**: The total number of tool calls across all tools is limited to 30 per turn.
+> **Note**: Total tool executions across all tools are capped at **30 calls per turn**. Exact duplicate search queries are rejected within the same session history to prevent loops.
 
 ## 📁 Project Structure
 
 ```
 XQ9-Agent/
-├── agent.py                            # Main application entry point
+├── agent.py                            # Main application entry point & interactive loop
 ├── requirements.txt                    # Python dependencies
-├── pyproject.toml                      # Linting and formatting config
+├── pyproject.toml                      # Linting, formatting, and type-check config
 ├── .env.example                        # Example environment variables
-├── system_prompt_en_us.md              # English system prompt (with tools)
-├── system_prompt_en_us_no_tools.md     # English system prompt (no tools)
-├── system_prompt_zh_tw.md              # Traditional Chinese system prompt (with tools)
-├── system_prompt_zh_tw_no_tools.md     # Traditional Chinese system prompt (no tools)
-├── tools/
-│   ├── __init__.py                     # Tool registry and function definitions
-│   ├── commands.py                     # CLI slash command handling
-│   ├── common_funcs.py                 # Shared helpers (domain parsing, text formatting)
-│   ├── config.py                       # Configuration constants and tool limits
-│   ├── handler.py                      # Tool dispatching and turn limits
-│   ├── logs.py                         # Logging manager
-│   ├── manage_files.py                 # Workspace file management
+├── core/                               # Core application infrastructure
+│   ├── __init__.py
+│   ├── commands.py                     # CLI slash command handling (/clear, /log, /set, /exit)
+│   ├── config.py                       # Core configuration & environment variables
+│   ├── logs.py                         # LogManager singleton & session log file handling
+│   └── text_utils.py                   # Language & Chinese character detection
+├── prompts/                            # System prompt templates
+│   ├── system_prompt_en_us.md          # English system prompt (with tools)
+│   ├── system_prompt_en_us_no_tools.md # English system prompt (no tools)
+│   ├── system_prompt_zh_tw.md          # Traditional Chinese system prompt (with tools)
+│   └── system_prompt_zh_tw_no_tools.md # Traditional Chinese system prompt (no tools)
+├── tools/                              # Agent tool definitions and implementations
+│   ├── __init__.py                     # Tool registry and OpenAI function schemas
+│   ├── config.py                       # Tool limits, enums, and operational constants
+│   ├── console_utils.py                # Safe console printing utilities
+│   ├── handler.py                      # Tool dispatching, turn limits, and deduplication
+│   ├── manage_files.py                 # Local filesystem management
 │   ├── manage_memories.py              # Persistent SQLite memory system
-│   ├── open_url.py                     # Web page fetcher with anti-bot and cleaning
-│   ├── run_python.py                   # Local Python execution
-│   └── web_search.py                   # Multi-engine search implementation
+│   ├── open_url.py                     # Web page fetcher with anti-bot and parking detection
+│   ├── run_python.py                   # Local Python execution with subprocess
+│   ├── web_search.py                   # Multi-backend web search (DDGS & Wikipedia)
+│   └── web_utils.py                    # Web & domain parsing helpers
 ├── agent_workspace/                    # Default workspace directory for files (auto-created)
-├── logs/                               # Log files (auto-created)
+├── logs/                               # Session log files (auto-created)
 └── memories.db                         # Persistent SQLite memory database (auto-created)
 ```
 
 ## 🧠 Memory System
 
-The `manage_memories` tool provides persistent storage across all sessions:
+The `manage_memories` tool provides persistent storage across all sessions using SQLite (`memories.db`):
 
 | Operation | Description | Example |
 |-----------|-------------|---------|
 | `create` | Store a new memory | `manage_memories(operation="create", content="User likes Python")` |
-| `read` | Retrieve memories | `manage_memories(operation="read", keyword="Python")` |
-| `update` | Modify a memory | `manage_memories(operation="update", memory_id=1, content="User loves Python")` |
+| `read` | Retrieve memories (by `keyword`, `date`, or `memory_id`) | `manage_memories(operation="read", keyword="Python")` |
+| `update` | Modify an existing memory | `manage_memories(operation="update", memory_id=1, content="User loves Python")` |
 | `delete` | Remove a memory | `manage_memories(operation="delete", memory_id=1)` |
-| `list` | Show all memories | `manage_memories(operation="list")` |
+| `list` | Show recent memories (newest first, optional `limit`) | `manage_memories(operation="list")` |
 | `clear_all` | Delete ALL memories | `manage_memories(operation="clear_all")` |
 
 ## 📁 File System
 
-The `manage_files` tool provides persistent file storage. By default, files are stored in the `agent_workspace/` directory:
+The `manage_files` tool provides local file management. By default, files are stored in the `agent_workspace/` directory:
 
-- Relative paths (e.g., `notes.txt` or `subdir/notes.txt`) are resolved inside `agent_workspace/`.
-- Absolute paths (e.g., `C:\path\to\file.txt` or `/path/to/file.txt`) are used as-is.
+- **Relative paths** (e.g., `notes.txt` or `subdir/notes.txt`) are resolved inside `agent_workspace/`.
+- **Absolute paths** (e.g., `C:\path\to\file.txt` or `/path/to/file.txt`) are accessed as-is.
 - If `file_path` is omitted when creating a file, it defaults to `untitled_<timestamp>.txt` in `agent_workspace/`.
 
 | Operation | Description | Example |
 |-----------|-------------|---------|
-| `create` | Create a new file | `manage_files(operation="create", file_path="notes.txt", content="Hello")` |
-| `read` | Read a file | `manage_files(operation="read", file_path="notes.txt")` |
-| `update` | Update an existing file | `manage_files(operation="update", file_path="notes.txt", content="Updated")` |
-| `delete` | Delete a file | `manage_files(operation="delete", file_path="notes.txt")` |
-| `list` | List files in a directory | `manage_files(operation="list")` |
+| `create` | Create a new file (fails if file already exists) | `manage_files(operation="create", file_path="notes.txt", content="Hello")` |
+| `read` | Read full text of a file | `manage_files(operation="read", file_path="notes.txt")` |
+| `update` | Overwrite an existing file | `manage_files(operation="update", file_path="notes.txt", content="Updated")` |
+| `delete` | Delete a file or directory | `manage_files(operation="delete", file_path="notes.txt")` |
+| `list` | List directory contents | `manage_files(operation="list")` |
 | `clear_all` | Delete all files in a subdirectory | `manage_files(operation="clear_all", file_path="temp")` |
 
-> **Note**: `clear_all` refuses to clear the root `agent_workspace/` directory. You must specify a subdirectory.
+> **Note**: `clear_all` refuses to clear the root `agent_workspace/` directory to prevent accidental total deletion. You must specify a subdirectory.
 
 ## 🛡️ Safety Features
 
-- **Tool call limits**: Prevents infinite loops and excessive API usage
-- **Duplicate search prevention**: Automatically blocks repeated search queries
-- **Timeout protection**: Python execution and network requests have timeouts
-- **Domain parking detection**: Avoids reading empty or advertisement pages
-- **Comprehensive error handling**: Graceful recovery from failures
-- **File access**: `manage_files` and `run_python` run with local permissions. Use responsibly.
+- **Tool Call Quotas**: Limits both individual tool executions and overall turn count (max 30) to prevent infinite loops.
+- **Search Deduplication**: Automatically blocks identical search queries within the active session.
+- **Multi-Backend Search Resilience**: Rotates through DuckDuckGo search backends (`bing`, `brave`, `duckduckgo`) with automatic retries before falling back to Wikipedia API.
+- **Domain Parking & Anti-Bot Detection**: Scores page content and titles against known domain parking, advertisement landers, and anti-bot challenge patterns to prevent reading low-quality or blocked sites.
+- **Timeout Protection**: Enforces timeouts for Python execution (default 10s, max 300s) and network HTTP requests.
+- **Workspace Boundary Safeguard**: `manage_files` requires targeting subdirectories when performing bulk deletion (`clear_all`) and will not delete the root workspace.
 
 ## 🔧 Configuration
 
-All configuration is managed through environment variables in `.env`:
+### Environment Variables (`.env`)
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | Your API authentication key | `sk-...` |
-| `OPENAI_API_URL` | The API endpoint URL | `https://api.openai.com/v1` |
-| `MODEL` | The model name to use | `gpt-6-luna` |
+| Variable | Description | Default / Example |
+|----------|-------------|-------------------|
+| `OPENAI_API_KEY` | API authentication key | `your_api_key_here` (defaults to `"placeholder"` if empty) |
+| `OPENAI_API_URL` | API endpoint URL | `https://api.openai.com/v1` |
+| `MODEL` | The model identifier | `gpt-6-luna` |
 
-### Customization Constants
+### Core Settings (`core/config.py`)
 
-You can modify these in `tools/config.py`:
+- `CONSOLE_REFRESH_RATE`: Refresh rate per second for Rich Live rendering (default: `100`).
+
+### Tool & Operational Constants (`tools/config.py`)
 
 ```python
+# Turn Call Limits
 MAX_TOTAL_TOOL_CALLS = 30  # Max total tool calls per turn
-MAX_SEARCH_CALLS = 5  # Max web searches per turn
-MAX_OPEN_URL_CALLS = 10  # Max URL opens per turn
+MAX_SEARCH_CALLS = 5       # Max web searches per turn
+MAX_OPEN_URL_CALLS = 10    # Max URL opens per turn
 MAX_RUN_PYTHON_CALLS = 15  # Max Python executions per turn
-MAX_MEMORY_CALLS = 10  # Max memory operations per turn
-MAX_FILE_CALLS = 15  # Max file operations per turn
+MAX_MEMORY_CALLS = 10      # Max memory operations per turn
+MAX_FILE_CALLS = 15        # Max file operations per turn
 
-MAX_SNIPPET_LENGTH = 150  # Search snippet length
-MAX_SEARCH_RESULTS_KEPT = 5  # Results to keep in context
+# Search & Content Limits
+MAX_SNIPPET_LENGTH = 150              # Max characters in search snippet
+MAX_SEARCH_RESULTS_KEPT = 5           # Max results kept in context
+MAX_FORMATTED_RESULTS_LENGTH = 2000   # Max formatted string length
+
+# Memory & File Storage
+MAX_MEMORY_LIMIT = 200                # Max items returned by memory list
+MEMORY_DB_PATH = "memories.db"        # SQLite database file path
+MAX_FILE_LIMIT = 200                  # Max directory items returned by file list
+FILE_ROOT_DIR = "agent_workspace"     # Default workspace directory
 ```
 
 ## 📝 Logging
 
-All activities are logged to the `logs/` directory. Log files follow the naming pattern `<module>_<timestamp>.log`, where `<timestamp>` is the agent launch time in `YYYYMMDD_HHMMSS` format:
+All web search and URL operations are recorded in the `logs/` directory using the naming format `<module>_<timestamp>.log`, where `<timestamp>` reflects the agent launch time in `YYYYMMDD_HHMMSS` format:
 
-- `web_search_<timestamp>.log` – All search queries and results
-- `open_url_<timestamp>.log` – All URL fetches with content
+- `web_search_<timestamp>.log` – All search queries, backend details, and search snippets
+- `open_url_<timestamp>.log` – All URL requests, status codes, and extracted webpage content
 
-Use `/log list` to view recent log files, `/log delete <filename>` to remove a single file, and `/log clear_all` to remove all log files. All log operations go through the shared `LogManager` singleton (`app.log_manager`), which automatically re-creates active log files after a clear or delete.
+Use `/log list` to view recent logs, `/log delete <filename>` to remove an individual log, and `/log clear_all` to safely wipe the log directory (active log files are automatically recreated).
 
 ## 🤝 Contributing
 
@@ -239,30 +265,27 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## 📄 License
 
-This project is open source and available under the MIT License.
+This project is open source and available under the [MIT License](LICENSE).
 
 ## 🙏 Acknowledgments
 
-- [Rich](https://github.com/Textualize/rich) for beautiful terminal output
-- [DuckDuckGo Search](https://duckduckgo.com/) for web search capabilities
-- [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) for HTML parsing
+- [Rich](https://github.com/Textualize/rich) for beautiful terminal output and live rendering
+- [DuckDuckGo Search (`ddgs`)](https://github.com/deedy5/duckduckgo_search) for web search capabilities
+- [curl_cffi](https://github.com/lexiforest/curl_cffi) & [Beautiful Soup](https://www.crummy.com/software/BeautifulSoup/) for robust web fetching and parsing
 
 ## ❓ FAQ
 
-**Q: Can I use this with a local LLM?**  
-A: Yes, as long as the API supports the OpenAI-compatible tool calling format and the `reasoning` parameter (or you can modify the code to disable it).
+**Q: Can I use this with a local LLM (Ollama, vLLM, LM Studio)?**  
+A: Yes! As long as the API endpoint supports OpenAI-compatible function calling. You can leave `OPENAI_API_KEY` blank or unset (it will fallback to `"placeholder"`) and point `OPENAI_API_URL` to your local endpoint (e.g., `http://localhost:11434/v1`).
 
-**Q: Does this work on Windows/macOS/Linux?**  
-A: Yes! The agent is cross-platform and has been tested on all three operating systems.
+**Q: Does this work across Windows, macOS, and Linux?**  
+A: Yes! The agent includes UTF-8 stream reconfigurations for Windows consoles and cross-platform path handling for all operating systems.
 
-**Q: Can the agent access my files?**  
-A: Yes, through `manage_files` and `run_python`, which have the same permissions as the running Python process. Use responsibly.
+**Q: Can the agent access my local files?**  
+A: Yes, via `manage_files` and `run_python`, which operate with the privileges of the executing Python process. By default, relative file paths are isolated within `agent_workspace/`.
 
-**Q: Where are my memories stored?**  
-A: All memories are stored locally in `memories.db`, a SQLite database in the project root. They persist across sessions.
+**Q: Where are memories stored?**  
+A: Memories are stored locally in SQLite (`memories.db`) in the project root and persist across sessions.
 
-**Q: Why am I getting "Domain parking detected" errors?**  
-A: The agent automatically skips pages that appear to be domain parking or for-sale pages. This is intentional to avoid wasting tool calls on irrelevant content.
-
-**Q: Where are my files stored?**  
-A: By default, files managed by `manage_files` are stored in the `agent_workspace/` directory. You can specify a different location by providing a `file_path`. Files persist across sessions.
+**Q: Why do I see "Domain parking detected" or anti-bot messages?**  
+A: The agent contains heuristic checks for parked domains, expired domain ads, and anti-bot verification walls to prevent feeding junk data into LLM context.
